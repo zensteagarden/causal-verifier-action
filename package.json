@@ -2,9 +2,13 @@
   "name": "causal-verifier-action",
   "version": "1.0.0",
   "private": true,
-  "description": "GitHub Action for the Causal Verification Gate",
+  "description": "GitHub Action and offline verifier for Causal Verification receipts",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "verify-receipt": "node verify-receipt.js"
+  },
+  "bin": {
+    "causal-verify-receipt": "./verify-receipt.js"
   },
   "engines": {
     "node": ">=20"
