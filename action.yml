@@ -46,5 +46,5 @@ outputs:
   error-type:
     description: "Machine-readable error type when returned by the engine"
 runs:
-  using: node20
+  using: node24
   main: index.js
