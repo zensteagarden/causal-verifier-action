@@ -1,0 +1,81 @@
+name: Publish Causal Receipt Proof
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the live gate and publish its receipt
+        shell: python
+        run: |
+          import json
+          import os
+          import sys
+          import urllib.request
+
+          base_url = "https://causal-engine-gateway.fly.dev"
+          signup = urllib.request.Request(
+              f"{base_url}/v1/accounts/signup",
+              data=json.dumps({"channel": "mcp"}).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(signup, timeout=30) as response:
+              account = json.loads(response.read().decode("utf-8"))
+
+          api_key = account.get("api_key", "")
+          if not api_key.startswith("cek_"):
+              raise RuntimeError("The live gateway did not issue a protected API key.")
+          print(f"::add-mask::{api_key}")
+
+          source_code = "def add(a: int, b: int) -> int:\n    return a + b\n"
+          test_code = (
+              "from solution import add\n\n"
+              "def test_add():\n"
+              "    assert add(2, 3) == 5\n"
+          )
+          verify = urllib.request.Request(
+              f"{base_url}/v1/verify",
+              data=json.dumps({
+                  "target_path": "solution.py",
+                  "source_code": source_code,
+                  "test_code": test_code,
+              }).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {api_key}",
+                  "Content-Type": "application/json",
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(verify, timeout=60) as response:
+              result = json.loads(response.read().decode("utf-8"))
+
+          receipt = result.get("receipt")
+          if not isinstance(receipt, dict):
+              raise RuntimeError("The live gateway response did not contain a receipt.")
+          if receipt.get("predicate", {}).get("result") != "PASSED":
+              raise RuntimeError("The published verification did not pass.")
+
+          rendered = json.dumps(receipt, indent=2, sort_keys=True)
+          print("PUBLIC CAUSAL VERIFICATION RECEIPT")
+          print(rendered)
+
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as summary:
+                  summary.write("# Public Causal Verification Receipt\n\n")
+                  summary.write(
+                      "This unsigned in-toto-compatible statement was returned by the "
+                      "live Causal verification gate for synthetic Python code and tests.\n\n"
+                  )
+                  summary.write("```json\n")
+                  summary.write(rendered)
+                  summary.write("\n```\n")
+
+          api_key = ""
