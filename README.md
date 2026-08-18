@@ -6,6 +6,10 @@ It sends generated Python source and pytest tests to `POST /v1/verify`, then fai
 
 Live gateway: `https://causal-engine-gateway.fly.dev`
 
+**Category:** trusted verification records for AI-generated software.
+
+Version 1.1 requires an issuer-authenticated receipt, independently verifies its signature, and binds it to the exact local source and pytest contract before CI can pass.
+
 ## Live Signed Verification Receipt
 
 [View the public issuer-authenticated Causal receipt](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32189632078).
@@ -174,3 +178,5 @@ When credits are exhausted, the engine returns HTTP 402. This action fails the j
 - [API v1 compatibility contract](docs/API_V1.md)
 - [Security and safe support](SECURITY.md)
 - [MVP launch readiness](docs/LAUNCH_READINESS.md)
+- [Trust model and proof](docs/TRUST_MODEL.md)
+- [Changelog](CHANGELOG.md)
