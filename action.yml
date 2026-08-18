@@ -19,6 +19,10 @@ inputs:
   test-path:
     description: "Pytest file defining the verification contract."
     required: true
+  require-signed-receipt:
+    description: "Require a valid DSSE/Ed25519 receipt bound to the submitted source and tests."
+    required: false
+    default: "true"
   timeout-seconds:
     description: "Client-side timeout for the verification request. Must be 5-600 seconds."
     required: false
@@ -44,6 +48,12 @@ outputs:
     description: "AST validity signal when returned by the engine"
   error-type:
     description: "Machine-readable error type when returned by the engine"
+  receipt-id:
+    description: "Content-addressed verification receipt ID"
+  receipt-url:
+    description: "Permanent receipt lookup URL"
+  receipt-authentication:
+    description: "Receipt authentication mode; DSSE_ED25519 when trusted"
 runs:
   using: node24
   main: index.js
