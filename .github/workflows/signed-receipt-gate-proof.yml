@@ -22,11 +22,32 @@ jobs:
           printf 'def add(a, b):\n    return a + b\n' > solution.py
           printf 'from solution import add\n\ndef test_add():\n    assert add(2, 3) == 5\n' > test_solution.py
 
+      - name: Create a disposable free-tier key
+        shell: python
+        run: |
+          import json
+          import os
+          import urllib.request
+
+          request = urllib.request.Request(
+              "https://causal-engine-gateway.fly.dev/v1/accounts/signup",
+              data=json.dumps({"channel": "github-signed-gate-proof"}).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              key = json.loads(response.read().decode("utf-8")).get("api_key", "")
+          if not key.startswith("cek_"):
+              raise RuntimeError("The gateway did not issue a protected key.")
+          print(f"::add-mask::{key}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"CAUSAL_ENGINE_API_KEY={key}\\n")
+
       - name: Require an issuer-authenticated receipt
         id: causal
         uses: ./
         with:
-          api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
+          api-key: ${{ env.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
           require-signed-receipt: "true"
