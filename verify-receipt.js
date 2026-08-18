@@ -5,8 +5,11 @@ const fs = require("fs");
 const crypto = require("crypto");
 
 function b64urlDecode(value) {
-  if (typeof value !== "string" || !/^[A-Za-z0-9_-]+$/.test(value)) throw new Error("invalid base64url");
-  return Buffer.from(value, "base64url");
+  if (typeof value !== "string" || !/^[A-Za-z0-9+/_-]+={0,2}$/.test(value)) {
+    throw new Error("invalid base64 or base64url");
+  }
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  return Buffer.from(normalized, "base64");
 }
 
 function pae(payloadType, payload) {
