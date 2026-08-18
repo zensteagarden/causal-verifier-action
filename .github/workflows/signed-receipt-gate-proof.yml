@@ -1,0 +1,40 @@
+name: Public Signed Receipt Gate Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/signed-receipt-gate-proof.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-signed-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create synthetic verification fixture
+        shell: bash
+        run: |
+          printf 'def add(a, b):\n    return a + b\n' > solution.py
+          printf 'from solution import add\n\ndef test_add():\n    assert add(2, 3) == 5\n' > test_solution.py
+
+      - name: Require an issuer-authenticated receipt
+        id: causal
+        uses: ./
+        with:
+          api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
+          source-path: solution.py
+          test-path: test_solution.py
+          require-signed-receipt: "true"
+
+      - name: Publish non-secret proof summary
+        shell: bash
+        run: |
+          echo "Signed receipt enforcement: PASSED"
+          echo "Authentication: ${{ steps.causal.outputs.receipt-authentication }}"
+          echo "Receipt ID: ${{ steps.causal.outputs.receipt-id }}"
+          echo "Receipt URL: ${{ steps.causal.outputs.receipt-url }}"
