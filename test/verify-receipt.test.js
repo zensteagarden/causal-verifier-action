@@ -61,3 +61,11 @@ test("rejects unknown and revoked keys", () => {
 test("rejects malformed envelopes", () => {
   assert.equal(verifyReceipt({}, { keys: [] }).classification, "INVALID");
 });
+
+
+test("accepts padded standard base64 emitted by DSSE producers", () => {
+  const f = fixture();
+  f.envelope.payload = Buffer.from(f.envelope.payload, "base64url").toString("base64");
+  f.envelope.signatures[0].sig = Buffer.from(f.envelope.signatures[0].sig, "base64url").toString("base64");
+  assert.equal(verifyReceipt(f.envelope, f.keyset).classification, "VALID");
+});
