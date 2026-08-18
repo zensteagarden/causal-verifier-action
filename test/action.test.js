@@ -69,6 +69,7 @@ function invoke(workspace, gateway, apiKey, overrides = {}) {
     INPUT_SOURCE_PATH: "solution.py",
     INPUT_TEST_PATH: "test_solution.py",
     INPUT_TIMEOUT_SECONDS: "5",
+    INPUT_REQUIRE_SIGNED_RECEIPT: "false",
     ...overrides,
   };
 
