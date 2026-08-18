@@ -13,7 +13,7 @@ Your coding agent says the code works. This action checks whether it actually pa
 The action:
 
 - reads a Python source file
-- reads a pytest file, or generates a parse-only test when none is provided
+- reads a required pytest verification contract
 - calls the metered verification API
 - passes CI only when the API returns a passing result
 - fails CI on test failure, HTTP errors, timeouts, and HTTP 402 credit exhaustion
@@ -70,7 +70,7 @@ jobs:
           test-path: test_solution.py
 ```
 
-If `source-path` is omitted on a pull request, the action verifies the first added or modified `.py` file against `origin/<base_ref>`.
+If `source-path` is omitted on a pull request, the action verifies the first added or modified `.py` file against `origin/<base_ref>`. `test-path` is always required so a passing result proves behavior, not merely valid syntax.
 
 ## Inputs
 
@@ -79,7 +79,7 @@ If `source-path` is omitted on a pull request, the action verifies the first add
 | `api-key` | yes | | `cek_` key from `POST /v1/accounts/signup` or `/v1/accounts/register`. |
 | `gateway-url` | no | `https://causal-engine-gateway.fly.dev` | Gateway base URL. |
 | `source-path` | no | first changed `.py` on PR | Python file to verify. |
-| `test-path` | no | generated parse-only contract | Pytest file to run. |
+| `test-path` | yes | | Pytest file defining the verification contract. |
 | `timeout-seconds` | no | `120` | Client-side request timeout, 5-600 seconds. |
 
 ## Outputs
