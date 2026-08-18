@@ -5,6 +5,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const DEFAULT_GATEWAY = "https://causal-engine-gateway.fly.dev";
+const DEFAULT_TIMEOUT_SECONDS = 120;
 
 function getInput(name) {
   const upper = String(name).toUpperCase();
@@ -20,9 +21,9 @@ function getInput(name) {
 function maskSecrets(text, apiKey) {
   let out = String(text ?? "");
   if (apiKey) {
-    out = out.split(apiKey).join("cek_…");
+    out = out.split(apiKey).join("cek_...");
   }
-  return out.replace(/cek_[A-Za-z0-9_-]+/g, (match) => `${match.slice(0, 8)}…`);
+  return out.replace(/cek_[A-Za-z0-9_-]+/g, (match) => `${match.slice(0, 8)}...`);
 }
 
 function setOutput(name, value) {
@@ -34,13 +35,26 @@ function setOutput(name, value) {
   fs.appendFileSync(dest, `${name}<<${token}\n${value ?? ""}\n${token}\n`, "utf8");
 }
 
-function fail(message) {
-  console.error(`::error::${maskSecrets(message, "")}`);
+function fail(message, apiKey = "") {
+  console.error(`::error::${maskSecrets(message, apiKey)}`);
   process.exit(1);
 }
 
 function workspaceRoot() {
   return process.env.GITHUB_WORKSPACE || process.cwd();
+}
+
+function resolveWorkspaceFile(inputPath, label, apiKey) {
+  const root = workspaceRoot();
+  const abs = path.resolve(root, inputPath);
+  const relative = path.relative(root, abs);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    fail(`${label} must stay inside the GitHub workspace.`, apiKey);
+  }
+  if (!fs.existsSync(abs)) {
+    fail(`${label} does not exist: ${inputPath}`, apiKey);
+  }
+  return { abs, relative };
 }
 
 function findChangedPython() {
@@ -71,31 +85,77 @@ function parseJsonSafe(text) {
   }
 }
 
-function cycleStatusFrom(body) {
+function normalizeResult(body, httpStatus) {
+  const result = {
+    httpStatus,
+    passed: false,
+    status: httpStatus === 402 ? "PAYMENT_REQUIRED" : "HTTP_ERROR",
+    endpointId: "",
+    checkoutUrl: "",
+    creditsRemaining: "",
+    requestId: "",
+    astValid: "",
+    errorType: "",
+    message: "",
+  };
+
   if (!body || typeof body !== "object") {
-    return null;
+    return result;
   }
-  const cycle = body.cycle_result;
-  if (cycle && typeof cycle === "object") {
-    return cycle.status || null;
+
+  result.checkoutUrl = body.checkout_url || body.checkoutUrl || "";
+  result.requestId = body.request_id || body.requestId || "";
+  result.creditsRemaining =
+    body.credits_remaining != null ? String(body.credits_remaining) :
+    body.creditsRemaining != null ? String(body.creditsRemaining) : "";
+
+  const error = body.error && typeof body.error === "object" ? body.error : null;
+  if (error) {
+    result.errorType = error.type || "";
+    result.message = error.message || "";
+    result.requestId = result.requestId || error.request_id || "";
   }
-  return null;
+
+  if (httpStatus === 402) {
+    result.errorType = result.errorType || "credits_exhausted";
+    return result;
+  }
+
+  if (typeof body.passed === "boolean") {
+    result.passed = body.passed;
+    result.status = body.status || (body.passed ? "pass" : "fail");
+    return result;
+  }
+
+  const cycle = body.cycle_result && typeof body.cycle_result === "object" ? body.cycle_result : null;
+  if (cycle) {
+    result.status = cycle.status || result.status;
+    result.passed = cycle.status === "SETTLED";
+    const endpoint = cycle.endpoint || {};
+    const telemetry = cycle.telemetry || {};
+    result.endpointId = endpoint.endpoint_id || telemetry.content_hash || "";
+    if (typeof telemetry.ast_valid === "boolean") {
+      result.astValid = String(telemetry.ast_valid);
+    }
+  }
+
+  if (body.workload_telemetry && typeof body.workload_telemetry.ast_valid === "boolean") {
+    result.astValid = String(body.workload_telemetry.ast_valid);
+  }
+
+  return result;
 }
 
-function endpointIdFrom(body) {
-  if (!body || typeof body !== "object") {
-    return "";
+function timeoutSeconds() {
+  const raw = getInput("timeout-seconds");
+  if (!raw) {
+    return DEFAULT_TIMEOUT_SECONDS;
   }
-  const cycle = body.cycle_result || {};
-  const endpoint = cycle.endpoint || {};
-  if (typeof endpoint.endpoint_id === "string") {
-    return endpoint.endpoint_id;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 5 || n > 600) {
+    fail("timeout-seconds must be a number from 5 to 600.");
   }
-  const telemetry = cycle.telemetry || {};
-  if (typeof telemetry.content_hash === "string") {
-    return telemetry.content_hash;
-  }
-  return "";
+  return n;
 }
 
 async function main() {
@@ -104,7 +164,7 @@ async function main() {
     console.log(`::add-mask::${apiKey}`);
   }
   if (!apiKey) {
-    fail("Missing input api-key. Register with POST /v1/accounts/register and store the cek_ key as a secret.");
+    fail("Missing input api-key. Register with POST /v1/accounts/signup and store the cek_ key as a GitHub secret.");
   }
 
   const gateway = (getInput("gateway-url") || DEFAULT_GATEWAY).replace(/\/+$/, "");
@@ -115,25 +175,17 @@ async function main() {
     sourcePath = findChangedPython() || "";
   }
   if (!sourcePath) {
-    fail("Missing source-path and no changed .py files were found vs origin/<base_ref>.");
+    fail("Missing source-path and no changed .py files were found vs origin/<base_ref>.", apiKey);
   }
 
-  const absSource = path.isAbsolute(sourcePath)
-    ? sourcePath
-    : path.join(workspaceRoot(), sourcePath);
-  if (!fs.existsSync(absSource)) {
-    fail(`source-path does not exist: ${sourcePath}`);
-  }
+  const source = resolveWorkspaceFile(sourcePath, "source-path", apiKey);
+  const sourceCode = fs.readFileSync(source.abs, "utf8");
+  const targetName = path.basename(source.relative);
 
-  const sourceCode = fs.readFileSync(absSource, "utf8");
-  const targetName = path.basename(absSource);
   let testCode;
   if (testPath) {
-    const absTest = path.isAbsolute(testPath) ? testPath : path.join(workspaceRoot(), testPath);
-    if (!fs.existsSync(absTest)) {
-      fail(`test-path does not exist: ${testPath}`);
-    }
-    testCode = fs.readFileSync(absTest, "utf8");
+    const test = resolveWorkspaceFile(testPath, "test-path", apiKey);
+    testCode = fs.readFileSync(test.abs, "utf8");
   } else {
     testCode = [
       "import ast",
@@ -146,10 +198,10 @@ async function main() {
   }
 
   const url = `${gateway}/v1/verify`;
-  console.log(`Causal Engine Verify: POST ${url} target=${targetName}`);
+  console.log(`Causal Verify: POST ${url} target=${targetName}`);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 120000);
+  const timer = setTimeout(() => controller.abort(), timeoutSeconds() * 1000);
   let response;
   try {
     response = await fetch(url, {
@@ -161,6 +213,8 @@ async function main() {
         "X-Causal-Engine-Key": apiKey,
       },
       body: JSON.stringify({
+        source: sourceCode,
+        tests: testCode,
         target_path: targetName,
         source_code: sourceCode,
         test_code: testCode,
@@ -168,50 +222,51 @@ async function main() {
       signal: controller.signal,
     });
   } catch (err) {
-    fail(`Request to /v1/verify failed: ${err && err.message ? err.message : err}`);
+    fail(`Request to /v1/verify failed: ${err && err.message ? err.message : err}`, apiKey);
   } finally {
     clearTimeout(timer);
   }
 
   const rawText = await response.text();
   const body = parseJsonSafe(maskSecrets(rawText, apiKey));
-  const httpStatus = response.status;
-  const checkoutUrl = body && typeof body === "object" ? body.checkout_url || "" : "";
-  const status = httpStatus === 402 ? "PAYMENT_REQUIRED" : cycleStatusFrom(body);
-  const endpointId = endpointIdFrom(body);
-  const astValid =
-    body && body.workload_telemetry && typeof body.workload_telemetry.ast_valid === "boolean"
-      ? String(body.workload_telemetry.ast_valid)
-      : "";
+  const result = normalizeResult(body, response.status);
 
-  setOutput("http-status", String(httpStatus));
-  setOutput("cycle-status", status || (httpStatus === 200 ? "FAILED" : "HTTP_ERROR"));
-  setOutput("endpoint-id", endpointId);
-  setOutput("checkout-url", checkoutUrl);
-  setOutput("ast-valid", astValid);
+  setOutput("http-status", String(result.httpStatus));
+  setOutput("cycle-status", result.status);
+  setOutput("status", result.status);
+  setOutput("passed", String(result.passed));
+  setOutput("endpoint-id", result.endpointId);
+  setOutput("checkout-url", result.checkoutUrl);
+  setOutput("credits-remaining", result.creditsRemaining);
+  setOutput("request-id", result.requestId);
+  setOutput("ast-valid", result.astValid);
+  setOutput("error-type", result.errorType);
 
-  if (httpStatus === 402) {
-    console.log("HTTP 402 PAYMENT_REQUIRED — merge is blocked until this account is funded.");
-    console.log(`checkout_url: ${checkoutUrl || "(missing from payload)"}`);
-    if (body && body.reason) {
-      console.log(`reason: ${body.reason}`);
+  if (result.httpStatus === 402) {
+    console.log("HTTP 402 PAYMENT_REQUIRED - merge is blocked until this account has verification credits.");
+    if (result.checkoutUrl) {
+      console.log(`checkout_url: ${result.checkoutUrl}`);
     }
     process.exit(1);
   }
 
-  if (httpStatus !== 200) {
-    fail(`Engine returned HTTP ${httpStatus} for ${sourcePath}.`);
+  if (result.httpStatus < 200 || result.httpStatus >= 300) {
+    fail(`Engine returned HTTP ${result.httpStatus} for ${source.relative}. ${result.errorType || ""} ${result.message || ""}`, apiKey);
   }
 
-  const settled = status === "SETTLED";
-  console.log(`${settled ? "SETTLED" : status || "FAILED"} for ${sourcePath}`);
-  if (endpointId) {
-    console.log(`endpoint_id: ${endpointId}`);
+  console.log(`${result.passed ? "PASS" : "FAIL"} for ${source.relative}`);
+  console.log(`status: ${result.status}`);
+  if (result.endpointId) {
+    console.log(`endpoint_id: ${result.endpointId}`);
   }
-  if (body && body.workload_telemetry) {
-    console.log(`telemetry: ${JSON.stringify(body.workload_telemetry)}`);
+  if (result.creditsRemaining) {
+    console.log(`credits_remaining: ${result.creditsRemaining}`);
   }
-  if (!settled) {
+  if (result.requestId) {
+    console.log(`request_id: ${result.requestId}`);
+  }
+
+  if (!result.passed) {
     process.exit(1);
   }
 }
