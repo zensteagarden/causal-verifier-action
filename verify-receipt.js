@@ -35,7 +35,7 @@ function verifyReceipt(document, keyset, options = {}) {
       return { valid: false, classification: "INVALID", reason: "exactly one signature is required" };
     }
     const signature = envelope.signatures[0];
-    const key = (keyset.keys || []).find((candidate) => candidate.keyid === signature.keyid);
+    const key = (keyset.keys || []).find((candidate) => (candidate.keyid || candidate.kid) === signature.keyid);
     if (!key) return { valid: false, classification: "UNTRUSTED", reason: "signing key not published" };
     if (key.status === "revoked") return { valid: false, classification: "UNTRUSTED", reason: "signing key revoked" };
     if (key.kty !== "OKP" || key.crv !== "Ed25519" || !key.x) {
