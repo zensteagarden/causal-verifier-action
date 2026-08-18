@@ -133,3 +133,11 @@ MVP response:
 ## HTTP 402
 
 When credits are exhausted, the engine returns HTTP 402. This action fails the job and writes `checkout-url` when the API provides one.
+
+
+## Documentation
+
+- [Five-minute quickstart](docs/QUICKSTART.md)
+- [API v1 compatibility contract](docs/API_V1.md)
+- [Security and safe support](SECURITY.md)
+- [MVP launch readiness](docs/LAUNCH_READINESS.md)
