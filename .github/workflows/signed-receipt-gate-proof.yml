@@ -44,7 +44,7 @@ jobs:
               raise RuntimeError("The gateway did not issue a protected key.")
           print(f"::add-mask::{key}")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
-              env_file.write(f"CAUSAL_ENGINE_API_KEY={key}\\n")
+              env_file.write(f"CAUSAL_ENGINE_API_KEY={key}\n")
 
       - name: Require an issuer-authenticated receipt
         id: causal
