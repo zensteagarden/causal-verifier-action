@@ -195,3 +195,15 @@ test("gateway credentials are rejected before any request", async () => {
   assert.equal(result.code, 1);
   assert.match(result.stderr, /without embedded credentials/);
 });
+
+test("missing test-path is rejected before any request", async (t) => {
+  const mock = await startServer();
+  t.after(() => mock.server.close());
+  const result = await invoke(fixture(), mock.gateway, "cek_fixture_no_tests", {
+    INPUT_TEST_PATH: ""
+  });
+
+  assert.equal(result.code, 1);
+  assert.equal(mock.requests.length, 0);
+  assert.match(result.stderr, /Missing required input test-path/);
+});
