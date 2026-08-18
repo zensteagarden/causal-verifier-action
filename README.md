@@ -43,7 +43,8 @@ The action:
 - reads a Python source file
 - reads a required pytest verification contract
 - calls the metered verification API
-- passes CI only when the API returns a passing result
+- passes CI only when the API returns a passing result and a valid DSSE/Ed25519 receipt
+- independently binds the signed receipt to the submitted source and tests
 - fails CI on test failure, HTTP errors, timeouts, and HTTP 402 credit exhaustion
 - masks `cek_` API keys in logs
 - does not print submitted source or tests by default
@@ -108,6 +109,7 @@ If `source-path` is omitted on a pull request, the action verifies the first add
 | `gateway-url` | no | `https://causal-engine-gateway.fly.dev` | Gateway base URL. |
 | `source-path` | no | first changed `.py` on PR | Python file to verify. |
 | `test-path` | yes | | Pytest file defining the verification contract. |
+| `require-signed-receipt` | no | `true` | Reject missing, invalid, unknown-key, or revoked-key receipts. |
 | `timeout-seconds` | no | `120` | Client-side request timeout, 5-600 seconds. |
 
 ## Outputs
@@ -124,10 +126,13 @@ If `source-path` is omitted on a pull request, the action verifies the first add
 | `http-status` | HTTP status from `/v1/verify`. |
 | `ast-valid` | AST validity signal when returned. |
 | `error-type` | Machine-readable error type when returned. |
+| `receipt-id` | Content-addressed receipt identifier. |
+| `receipt-url` | Permanent receipt lookup URL. |
+| `receipt-authentication` | Receipt authentication mode. |
 
 ## Response Compatibility
 
-The action supports both the current legacy engine response and the simple MVP response described in the developer launch handoff.
+Passing jobs require a valid signed receipt by default. Legacy or private gateways can be tested temporarily with `require-signed-receipt: false`, but that removes issuer authentication and should not be used as a trusted merge gate.
 
 Legacy response:
 
