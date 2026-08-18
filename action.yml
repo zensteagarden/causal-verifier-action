@@ -17,9 +17,8 @@ inputs:
     required: false
     default: ""
   test-path:
-    description: "Optional pytest file. If omitted, a parse-only contract is generated."
-    required: false
-    default: ""
+    description: "Pytest file defining the verification contract."
+    required: true
   timeout-seconds:
     description: "Client-side timeout for the verification request. Must be 5-600 seconds."
     required: false
