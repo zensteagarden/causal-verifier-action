@@ -1,15 +1,15 @@
-name: "Causal Engine Verify"
-description: "Metered causal verification gate. POSTs Python source to /v1/verify; passes on SETTLED, fails on FAILED or HTTP 402."
+name: "Causal Verify"
+description: "Metered verification gate for generated Python. POSTs source + tests to /v1/verify and fails CI unless the gate passes."
 author: "zensteagarden"
 branding:
   icon: shield
   color: blue
 inputs:
   api-key:
-    description: "cek_ API key from POST /v1/accounts/register. Store as a GitHub secret; do not log it."
+    description: "cek_ API key from POST /v1/accounts/signup or /v1/accounts/register. Store as a GitHub secret."
     required: true
   gateway-url:
-    description: "Causal Engine gateway base URL."
+    description: "Causal verification gateway base URL."
     required: false
     default: "https://causal-engine-gateway.fly.dev"
   source-path:
@@ -17,20 +17,34 @@ inputs:
     required: false
     default: ""
   test-path:
-    description: "Optional pytest file. If omitted, a parse-only contract is generated (no pathlib; that module is sandbox-banned)."
+    description: "Optional pytest file. If omitted, a parse-only contract is generated."
     required: false
     default: ""
+  timeout-seconds:
+    description: "Client-side timeout for the verification request. Must be 5-600 seconds."
+    required: false
+    default: "120"
 outputs:
+  passed:
+    description: "true when verification passed, otherwise false"
+  status:
+    description: "pass/fail style status, SETTLED/FAILED legacy status, PAYMENT_REQUIRED, or HTTP_ERROR"
   cycle-status:
-    description: "SETTLED, FAILED, PAYMENT_REQUIRED, or HTTP_ERROR"
+    description: "Backward-compatible alias for status"
   endpoint-id:
-    description: "64-hex endpoint id when the engine returns one"
+    description: "Endpoint id or content hash when returned by the engine"
   checkout-url:
     description: "Stripe Checkout URL when the engine returns HTTP 402"
+  credits-remaining:
+    description: "Credits remaining when returned by the engine"
+  request-id:
+    description: "Request id when returned by the engine"
   http-status:
     description: "HTTP status from POST /v1/verify"
   ast-valid:
-    description: "workload_telemetry.ast_valid when present"
+    description: "AST validity signal when returned by the engine"
+  error-type:
+    description: "Machine-readable error type when returned by the engine"
 runs:
   using: node20
   main: index.js
