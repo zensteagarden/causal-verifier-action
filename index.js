@@ -200,24 +200,15 @@ async function main() {
     fail("Missing source-path and no changed .py files were found vs origin/<base_ref>.", apiKey);
   }
 
-  const source = resolveWorkspaceFile(sourcePath, "source-path", apiKey);
-  const sourceCode = fs.readFileSync(source.abs, "utf8");
-  const targetName = path.basename(source.relative);
-
-  let testCode;
-  if (testPath) {
-    const test = resolveWorkspaceFile(testPath, "test-path", apiKey);
-    testCode = fs.readFileSync(test.abs, "utf8");
-  } else {
-    testCode = [
-      "import ast",
-      "",
-      "def test_source_parses():",
-      `    with open(${JSON.stringify(targetName)}, encoding="utf-8") as handle:`,
-      "        ast.parse(handle.read())",
-      "",
-    ].join("\n");
+  if (!testPath) {
+    fail("Missing required input test-path. Provide a pytest contract for meaningful verification.", apiKey);
   }
+
+  const source = resolveWorkspaceFile(sourcePath, "source-path", apiKey);
+  const test = resolveWorkspaceFile(testPath, "test-path", apiKey);
+  const sourceCode = fs.readFileSync(source.abs, "utf8");
+  const testCode = fs.readFileSync(test.abs, "utf8");
+  const targetName = path.basename(source.relative);
 
   const url = `${gateway}/v1/verify`;
   console.log(`Causal Verify: POST ${url} target=${targetName}`);
