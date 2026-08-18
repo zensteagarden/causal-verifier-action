@@ -178,7 +178,11 @@ test("API key echoed by an error response is masked", async (t) => {
   const result = await invoke(fixture(), mock.gateway, secret);
 
   assert.equal(result.code, 1);
-  assert.doesNotMatch(result.stdout + result.stderr, new RegExp(secret));
+  const visibleOutput = (result.stdout + result.stderr)
+    .split(/\r?\n/)
+    .filter((line) => !line.startsWith("::add-mask::"))
+    .join("\n");
+  assert.doesNotMatch(visibleOutput, new RegExp(secret));
   assert.match(result.stderr, /cek_\.\.\./);
 });
 
