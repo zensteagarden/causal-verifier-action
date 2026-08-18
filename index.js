@@ -44,17 +44,29 @@ function workspaceRoot() {
   return process.env.GITHUB_WORKSPACE || process.cwd();
 }
 
+function isOutside(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative.startsWith("..") || path.isAbsolute(relative);
+}
+
 function resolveWorkspaceFile(inputPath, label, apiKey) {
-  const root = workspaceRoot();
+  const root = fs.realpathSync(workspaceRoot());
   const abs = path.resolve(root, inputPath);
-  const relative = path.relative(root, abs);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  if (isOutside(root, abs)) {
     fail(`${label} must stay inside the GitHub workspace.`, apiKey);
   }
   if (!fs.existsSync(abs)) {
     fail(`${label} does not exist: ${inputPath}`, apiKey);
   }
-  return { abs, relative };
+
+  const real = fs.realpathSync(abs);
+  if (isOutside(root, real)) {
+    fail(`${label} must not resolve outside the GitHub workspace.`, apiKey);
+  }
+  if (!fs.statSync(real).isFile()) {
+    fail(`${label} must be a regular file.`, apiKey);
+  }
+  return { abs: real, relative: path.relative(root, real) };
 }
 
 function findChangedPython() {
@@ -168,6 +180,16 @@ async function main() {
   }
 
   const gateway = (getInput("gateway-url") || DEFAULT_GATEWAY).replace(/\/+$/, "");
+  let gatewayUrl;
+  try {
+    gatewayUrl = new URL(gateway);
+  } catch {
+    fail("gateway-url must be a valid http or https URL.", apiKey);
+  }
+  if (!["http:", "https:"].includes(gatewayUrl.protocol) || gatewayUrl.username || gatewayUrl.password) {
+    fail("gateway-url must be an http or https URL without embedded credentials.", apiKey);
+  }
+
   let sourcePath = getInput("source-path");
   const testPath = getInput("test-path");
 
@@ -228,7 +250,7 @@ async function main() {
   }
 
   const rawText = await response.text();
-  const body = parseJsonSafe(maskSecrets(rawText, apiKey));
+  const body = parseJsonSafe(rawText);
   const result = normalizeResult(body, response.status);
 
   setOutput("http-status", String(result.httpStatus));
