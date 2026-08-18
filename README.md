@@ -21,6 +21,19 @@ That successful live run returned and independently verified a DSSE/Ed25519 enve
 
 The public workflow reconstructed DSSE pre-authentication encoding and verified the signature independently with Node's cryptographic library. Its final result is `DSSE signature: VALID`. The receipt contains no submitted source, tests, API credential, or private signing material.
 
+
+## Verify a Receipt Offline
+
+Save a gateway response as `receipt.json`, then run:
+
+```bash
+node verify-receipt.js --receipt receipt.json
+```
+
+The verifier fetches only the gateway's public Ed25519 keyset. For a completely disconnected check, save that keyset and pass `--keys keys.json`. Add `--source solution.py --tests test_solution.py` to prove that local files match the signed digests.
+
+It prints `VALID`, `INVALID`, or `UNTRUSTED` and exits nonzero unless the DSSE signature, statement shape, key trust status, and any supplied file digests verify.
+
 ## What It Does
 
 Your coding agent says the code works. This action checks whether it actually passes the verification contract.
