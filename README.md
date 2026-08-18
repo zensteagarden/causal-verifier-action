@@ -6,6 +6,19 @@ It sends generated Python source and pytest tests to `POST /v1/verify`, then fai
 
 Live gateway: `https://causal-engine-gateway.fly.dev`
 
+## Live Verification Receipt
+
+[View the first public Causal verification receipt](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32188596039).
+
+That successful live run returned an unsigned, in-toto-compatible test-result statement containing:
+
+- the SHA-256 digest of the exact synthetic Python source;
+- the SHA-256 digest of the exact synthetic pytest contract;
+- the official `https://in-toto.io/attestation/test-result/v0.1` predicate;
+- the mechanical result `PASSED`.
+
+The receipt contains no submitted source, tests, or API credential. This first format is hash-verifiable but intentionally unsigned; issuer-authentic signing is a later trust milestone.
+
 ## What It Does
 
 Your coding agent says the code works. This action checks whether it actually passes the verification contract.
