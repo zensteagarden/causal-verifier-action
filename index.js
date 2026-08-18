@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const { verifyReceipt } = require("./verify-receipt");
 
 const DEFAULT_GATEWAY = "https://causal-engine-gateway.fly.dev";
 const DEFAULT_TIMEOUT_SECONDS = 120;
@@ -158,6 +159,14 @@ function normalizeResult(body, httpStatus) {
   return result;
 }
 
+function requireSignedReceipt() {
+  const raw = getInput("require-signed-receipt").toLowerCase();
+  if (!raw) return true;
+  if (["true", "1", "yes"].includes(raw)) return true;
+  if (["false", "0", "no"].includes(raw)) return false;
+  fail("require-signed-receipt must be true or false.");
+}
+
 function timeoutSeconds() {
   const raw = getInput("timeout-seconds");
   if (!raw) {
@@ -265,6 +274,25 @@ async function main() {
 
   if (result.httpStatus < 200 || result.httpStatus >= 300) {
     fail(`Engine returned HTTP ${result.httpStatus} for ${source.relative}. ${result.errorType || ""} ${result.message || ""}`, apiKey);
+  }
+
+  if (requireSignedReceipt()) {
+    let keyResponse;
+    try {
+      keyResponse = await fetch(`${gateway}/.well-known/causal-verification-keys.json`, {
+        headers: { Accept: "application/json" },
+      });
+    } catch (err) {
+      fail(`Could not retrieve the receipt verification keyset: ${err && err.message ? err.message : err}`, apiKey);
+    }
+    if (!keyResponse.ok) fail(`Receipt keyset returned HTTP ${keyResponse.status}.`, apiKey);
+    const keyset = await keyResponse.json();
+    const verification = verifyReceipt(body, keyset, { source: sourceCode, tests: testCode });
+    if (!verification.valid) fail(`Signed receipt verification failed: ${verification.classification} ${verification.reason}`, apiKey);
+    setOutput("receipt-id", body.receipt_id || "");
+    setOutput("receipt-url", body.receipt && body.receipt.predicate ? body.receipt.predicate.url || "" : "");
+    setOutput("receipt-authentication", body.receipt_authentication || "");
+    console.log(`Signed receipt: VALID (${verification.keyid})`);
   }
 
   console.log(`${result.passed ? "PASS" : "FAIL"} for ${source.relative}`);
