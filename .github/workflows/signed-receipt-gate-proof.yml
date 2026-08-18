@@ -31,7 +31,10 @@ jobs:
 
           request = urllib.request.Request(
               "https://causal-engine-gateway.fly.dev/v1/accounts/signup",
-              data=json.dumps({"channel": "github-signed-gate-proof"}).encode("utf-8"),
+              data=json.dumps({
+                  "email": f"github-proof-{os.environ['GITHUB_RUN_ID']}@example.com",
+                  "channel": "github-signed-gate-proof",
+              }).encode("utf-8"),
               headers={"Content-Type": "application/json"},
               method="POST",
           )
