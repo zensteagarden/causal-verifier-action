@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Call the live gate and publish its receipt
+      - name: Call the live gate and publish its signed receipt
         shell: python
         run: |
+          import base64
           import json
           import os
-          import sys
           import urllib.request
 
           base_url = "https://causal-engine-gateway.fly.dev"
@@ -55,27 +55,97 @@ jobs:
           )
           with urllib.request.urlopen(verify, timeout=60) as response:
               result = json.loads(response.read().decode("utf-8"))
+          with urllib.request.urlopen(
+              f"{base_url}/.well-known/causal-verification-keys.json",
+              timeout=30,
+          ) as response:
+              verification_keys = json.loads(response.read().decode("utf-8"))
 
           receipt = result.get("receipt")
+          envelope = result.get("receipt_envelope")
           if not isinstance(receipt, dict):
               raise RuntimeError("The live gateway response did not contain a receipt.")
           if receipt.get("predicate", {}).get("result") != "PASSED":
               raise RuntimeError("The published verification did not pass.")
+          if result.get("receipt_authentication") != "DSSE_ED25519":
+              raise RuntimeError("The live gateway returned an unsigned receipt.")
+          if not isinstance(envelope, dict):
+              raise RuntimeError("The live gateway did not return a DSSE envelope.")
+          if not verification_keys.get("keys"):
+              raise RuntimeError("The live gateway did not publish a verification key.")
 
-          rendered = json.dumps(receipt, indent=2, sort_keys=True)
-          print("PUBLIC CAUSAL VERIFICATION RECEIPT")
-          print(rendered)
+          envelope_statement = json.loads(base64.b64decode(envelope["payload"]))
+          if envelope_statement != receipt:
+              raise RuntimeError("The DSSE payload does not match the receipt.")
+
+          with open("public-receipt.json", "w", encoding="utf-8") as handle:
+              json.dump(receipt, handle, indent=2, sort_keys=True)
+          with open("public-receipt.dsse.json", "w", encoding="utf-8") as handle:
+              json.dump(envelope, handle, indent=2, sort_keys=True)
+          with open("verification-keys.json", "w", encoding="utf-8") as handle:
+              json.dump(verification_keys, handle, indent=2, sort_keys=True)
+
+          rendered_envelope = json.dumps(envelope, indent=2, sort_keys=True)
+          rendered_keys = json.dumps(verification_keys, indent=2, sort_keys=True)
+          print("PUBLIC CAUSAL DSSE RECEIPT")
+          print(rendered_envelope)
+          print("PUBLIC CAUSAL VERIFICATION KEY")
+          print(rendered_keys)
 
           summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
           if summary_path:
               with open(summary_path, "a", encoding="utf-8") as summary:
-                  summary.write("# Public Causal Verification Receipt\n\n")
+                  summary.write("# Public Causal DSSE Verification Receipt\n\n")
                   summary.write(
-                      "This unsigned in-toto-compatible statement was returned by the "
-                      "live Causal verification gate for synthetic Python code and tests.\n\n"
+                      "The live Causal gate returned this issuer-authenticated DSSE envelope "
+                      "for synthetic Python code and tests. The following step independently "
+                      "verifies the signature using the published Ed25519 key.\n\n"
                   )
-                  summary.write("```json\n")
-                  summary.write(rendered)
+                  summary.write("## DSSE envelope\n\n```json\n")
+                  summary.write(rendered_envelope)
+                  summary.write("\n```\n\n## Published verification key\n\n```json\n")
+                  summary.write(rendered_keys)
                   summary.write("\n```\n")
 
           api_key = ""
+
+      - name: Independently verify the DSSE signature
+        shell: bash
+        run: |
+          node <<'NODE'
+          const crypto = require("node:crypto");
+          const fs = require("node:fs");
+
+          const envelope = JSON.parse(fs.readFileSync("public-receipt.dsse.json", "utf8"));
+          const keySet = JSON.parse(fs.readFileSync("verification-keys.json", "utf8"));
+          const signature = envelope.signatures?.[0];
+          const jwk = keySet.keys?.find((key) => key.kid === signature?.keyid);
+          if (!jwk) throw new Error("No published key matches the DSSE signature keyid.");
+
+          const payloadType = Buffer.from(envelope.payloadType, "utf8");
+          const payload = Buffer.from(envelope.payload, "base64");
+          const pae = Buffer.concat([
+            Buffer.from("DSSEv1 ", "ascii"),
+            Buffer.from(String(payloadType.length), "ascii"),
+            Buffer.from(" ", "ascii"),
+            payloadType,
+            Buffer.from(" ", "ascii"),
+            Buffer.from(String(payload.length), "ascii"),
+            Buffer.from(" ", "ascii"),
+            payload,
+          ]);
+          const publicKey = crypto.createPublicKey({ key: jwk, format: "jwk" });
+          const valid = crypto.verify(
+            null,
+            pae,
+            publicKey,
+            Buffer.from(signature.sig, "base64"),
+          );
+          if (!valid) throw new Error("DSSE signature verification failed.");
+
+          console.log("DSSE signature: VALID");
+          fs.appendFileSync(
+            process.env.GITHUB_STEP_SUMMARY,
+            "\n## Independent verification\n\n**DSSE signature: VALID**\n",
+          );
+          NODE
