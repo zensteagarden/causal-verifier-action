@@ -185,7 +185,7 @@ async function main() {
     console.log(`::add-mask::${apiKey}`);
   }
   if (!apiKey) {
-    fail("Missing input api-key. Register with POST /v1/accounts/signup and store the cek_ key as a GitHub secret.");
+    fail("Missing input api-key. Accepted controlled pilots receive a privately provisioned cek_ key; store it as a protected GitHub Actions secret.");
   }
 
   const gateway = (getInput("gateway-url") || DEFAULT_GATEWAY).replace(/\/+$/, "");
