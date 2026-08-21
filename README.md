@@ -188,7 +188,8 @@ The MIT license applies to the software contained in this repository. It does no
 
 ## Documentation
 
-- [Five-minute quickstart](docs/QUICKSTART.md)
+- [Controlled beta and trial rules](docs/CONTROLLED_BETA.md)
+- [Accepted pilot quickstart](docs/QUICKSTART.md)
 - [API v1 compatibility contract](docs/API_V1.md)
 - [Security and safe support](SECURITY.md)
 - [MVP launch readiness](docs/LAUNCH_READINESS.md)
