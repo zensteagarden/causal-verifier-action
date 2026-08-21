@@ -1,26 +1,29 @@
-# Five-Minute Quickstart
+# Controlled Beta Quickstart
 
-This quickstart adds Causal Verify to a Python repository. It uses synthetic code and does not require proprietary source.
+This guide installs the Causal Verify Action after an operator-run Noticer outcome proof has been accepted for a managed pilot.
 
-## Before you start
+The free proof itself requires only:
 
-You need:
+1. a public GitHub repository URL
+2. one sentence: **"when ______ happens, ______ must be true."**
+
+[Open a free outcome-proof request](https://github.com/zensteagarden/causal-verifier-action/issues/new?template=free-outcome-proof.yml).
+
+Do not post API keys, source code, credentials, personal information, or security reports in the public issue.
+
+## Before You Install
+
+An accepted installed pilot requires:
 
 - a GitHub repository
 - permission to add repository secrets and workflow files
-- a Causal Engine API key beginning with `cek_`
+- one selected Python source file
+- one pytest outcome contract
+- a `cek_` API key privately provisioned by the operator
 
-Create a free key if needed:
+Self-service email signup is paused during the controlled beta. The key is delivered privately only after the proof and installation scope are accepted.
 
-```bash
-curl -sS https://causal-engine-gateway.fly.dev/v1/accounts/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com"}'
-```
-
-Copy the returned `api_key` directly into a password manager or GitHub Secret. Do not commit it or send it through chat.
-
-## 1. Add the secret
+## 1. Add the Secret
 
 Create a repository secret named:
 
@@ -28,18 +31,20 @@ Create a repository secret named:
 CAUSAL_ENGINE_API_KEY
 ```
 
-Set its value to the complete `cek_` key. GitHub passes the key to the Action without placing it in the workflow file.
+Set its value to the complete `cek_` key. Do not commit it or send it through chat.
 
-## 2. Add sample source and tests
+## 2. Add Source and an Outcome Contract
 
-Create `solution.py`:
+Select one Python source file and one pytest file that asserts the required behavior.
+
+Example `solution.py`:
 
 ```python
 def add(a: int, b: int) -> int:
     return a + b
 ```
 
-Create `test_solution.py`:
+Example `test_solution.py`:
 
 ```python
 from solution import add
@@ -49,12 +54,12 @@ def test_add():
     assert add(2, 3) == 5
 ```
 
-## 3. Add the workflow
+## 3. Add the Workflow
 
-Create `.github/workflows/causal-verify.yml`:
+Create `.github/workflows/noticer-outcome-gate.yml`:
 
 ```yaml
-name: Causal Verification Gate
+name: Noticer Outcome Gate
 
 on:
   pull_request:
@@ -71,48 +76,39 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: zensteagarden/causal-verifier-action@v1
+      - uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
 ```
 
-For an immutable dependency pin, replace `@v1` with `@v1.0.0`.
+The immutable Action commit above is the v1.1.0 release.
 
-## 4. Run it
+## 4. Run It
 
-Open a pull request or manually dispatch the workflow. A successful run reports a passing status such as `pass` or legacy `SETTLED`. A failing test, malformed response, HTTP error, timeout, exhausted credits, unsafe path, or unsafe gateway URL fails the job.
+Open a pull request or manually dispatch the workflow. A passing job requires a valid signed receipt bound to the selected source and outcome contract. A failing contract, malformed response, HTTP error, timeout, exhausted balance, unsafe path, or unsafe gateway URL fails the job.
+
+A repository owner may make the Noticer Outcome Gate a required status check after validating the pilot.
 
 ## Troubleshooting
 
-### Missing API key
+### Missing API Key
 
-Confirm the secret is named exactly `CAUSAL_ENGINE_API_KEY` and the workflow passes it through `secrets.CAUSAL_ENGINE_API_KEY`. Never print the secret to inspect it.
+Confirm the secret is named exactly `CAUSAL_ENGINE_API_KEY` and the workflow passes it through `secrets.CAUSAL_ENGINE_API_KEY`. Never print the secret.
 
-### Missing pytest contract
+### Missing Outcome Contract
 
-The `test-path` input is required. Point it to a real pytest file that asserts behavior.
+The `test-path` input is required. Point it to a real pytest file that asserts the declared behavior.
 
 ### HTTP 402
 
-The account has no remaining verification credits. Use the checkout URL only if it is supplied by the official gateway and points to a trusted destination.
+The account has no remaining verification balance. Contact the operator through the accepted pilot thread. Do not use an unverified checkout link.
 
-### Path rejected
+### Path Rejected
 
-Both source and test files must resolve inside `GITHUB_WORKSPACE`. Symlinks and traversal paths that escape the workspace are rejected intentionally.
+Both source and test files must resolve inside `GITHUB_WORKSPACE`. Symlinks and traversal paths that escape the workspace are rejected.
 
-### Gateway URL rejected
+### Safe Support Information
 
-Use `https://causal-engine-gateway.fly.dev`. URLs containing usernames, passwords, or other embedded credentials are rejected.
-
-## Safe support information
-
-When requesting help, share only:
-
-- HTTP status
-- normalized status
-- error type
-- request ID, when returned
-
-Do not share API keys, raw authorization headers, proprietary source, or complete unredacted responses.
+Share only the Action version, HTTP status, normalized status, error type, and request ID. Do not share API keys, raw authorization headers, proprietary source, or complete unredacted responses.
