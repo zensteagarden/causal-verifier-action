@@ -10,6 +10,22 @@ Live gateway: `https://causal-engine-gateway.fly.dev`
 
 Version 1.1 requires an issuer-authenticated receipt, independently verifies its signature, and binds it to the exact local source and pytest contract before CI can pass.
 
+
+## Try One Outcome Proof Free
+
+I am accepting the first five eligible public Python repositories.
+
+Send only:
+
+- the public GitHub repository URL
+- one sentence: **"when ______ happens, ______ must be true."**
+
+I will run the repository's current checks and Noticer side by side, then return the public evidence. The free proof is operator-run: no email signup, credits, API key, private code, or production access is required from the tester.
+
+[Open a free outcome-proof request](https://github.com/zensteagarden/causal-verifier-action/issues/new?template=free-outcome-proof.yml)
+
+This is a controlled technical proof, not a promise that the repository contains a bug. Eligible requests must be reproducible safely from public code.
+
 ## Live Signed Verification Receipt
 
 [View the public issuer-authenticated Causal receipt](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32189632078).
@@ -54,32 +70,26 @@ The action:
 - does not print submitted source or tests by default
 - blocks configured source and test paths from escaping the GitHub workspace
 
-## 5-Minute Setup
+## Accepted Pilot Installation
 
-### 1. Create a Free API Key
+The free outcome proof above is run by the operator and does not require the tester to create an account or handle an API key.
 
-```bash
-curl -sS https://causal-engine-gateway.fly.dev/v1/accounts/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com"}'
-```
+Self-service email signup is paused during the controlled beta. If a proof is accepted for an installed pilot, the operator privately provisions a `cek_` API key. Never place a key in an issue, pull request, chat, screenshot, or workflow file.
 
-Copy the returned `api_key`. It should start with `cek_`.
+### 1. Add the GitHub Secret
 
-### 2. Add the GitHub Secret
-
-In your repository settings, add:
+In the accepted pilot repository, add:
 
 ```text
-CAUSAL_ENGINE_API_KEY=cek_your_key_here
+CAUSAL_ENGINE_API_KEY=cek_your_privately_provisioned_key
 ```
 
-### 3. Add a Workflow
+### 2. Add the Workflow
 
 Create `.github/workflows/causal-verify.yml`:
 
 ```yaml
-name: Causal Verification Gate
+name: Noticer Outcome Gate
 
 on:
   pull_request:
@@ -96,20 +106,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: zensteagarden/causal-verifier-action@v1
+      - uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
 ```
 
-If `source-path` is omitted on a pull request, the action verifies the first added or modified `.py` file against `origin/<base_ref>`. `test-path` is always required so a passing result proves behavior, not merely valid syntax.
+The immutable Action commit above is the v1.1.0 release. Replace the example paths with the selected Python source and pytest outcome contract. `test-path` is required so a passing result proves declared behavior rather than syntax alone.
 
 ## Inputs
 
 | Name | Required | Default | Description |
 | --- | --- | --- | --- |
-| `api-key` | yes | | `cek_` key from `POST /v1/accounts/signup` or `/v1/accounts/register`. |
+| `api-key` | yes | | `cek_` key privately provisioned for an accepted pilot. |
 | `gateway-url` | no | `https://causal-engine-gateway.fly.dev` | Gateway base URL. |
 | `source-path` | no | first changed `.py` on PR | Python file to verify. |
 | `test-path` | yes | | Pytest file defining the verification contract. |
@@ -171,6 +181,10 @@ MVP response:
 
 When credits are exhausted, the engine returns HTTP 402. This action fails the job and writes `checkout-url` when the API provides one.
 
+
+## License and Ownership Boundary
+
+The MIT license applies to the software contained in this repository. It does not grant rights to the NOTICER name or to separately hosted service code, private verifier implementations, signing private keys, customer evidence, proprietary outcome-contract methods, or other material not included here. See [NOTICE.md](NOTICE.md).
 
 ## Documentation
 
