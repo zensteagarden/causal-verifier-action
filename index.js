@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { verifyReceipt } = require("./verify-receipt");
@@ -179,6 +180,21 @@ function timeoutSeconds() {
   return n;
 }
 
+function expectedTestSha256() {
+  const value = getInput("expected-test-sha256");
+  if (!value) {
+    return "";
+  }
+  if (!/^[a-f0-9]{64}$/.test(value)) {
+    fail("expected-test-sha256 must be exactly 64 lowercase hexadecimal characters.");
+  }
+  return value;
+}
+
+function sha256Text(value) {
+  return crypto.createHash("sha256").update(Buffer.from(value, "utf8")).digest("hex");
+}
+
 async function main() {
   const apiKey = getInput("api-key");
   if (apiKey) {
@@ -218,6 +234,15 @@ async function main() {
   const sourceCode = fs.readFileSync(source.abs, "utf8");
   const testCode = fs.readFileSync(test.abs, "utf8");
   const targetName = path.basename(source.relative);
+
+  const approvedTestDigest = expectedTestSha256();
+  const submittedTestDigest = sha256Text(testCode);
+  if (approvedTestDigest && submittedTestDigest !== approvedTestDigest) {
+    fail(
+      `The pytest contract does not match the approved expected-test-sha256 (${approvedTestDigest}).`,
+      apiKey
+    );
+  }
 
   const url = `${gateway}/v1/verify`;
   console.log(`Causal Verify: POST ${url} target=${targetName}`);
@@ -277,21 +302,51 @@ async function main() {
   }
 
   if (requireSignedReceipt()) {
+    if (!["pass", "fail", "SETTLED", "FAILED"].includes(result.status)) {
+      fail(`Engine returned an unsupported signed decision status: ${result.status}`, apiKey);
+    }
+    const statusPassed = ["pass", "SETTLED"].includes(result.status);
+    if (statusPassed !== result.passed) {
+      fail(
+        `Engine response contradiction: status ${result.status} disagrees with passed=${result.passed}.`,
+        apiKey
+      );
+    }
+
+    const keyController = new AbortController();
+    const keyTimer = setTimeout(() => keyController.abort(), timeoutSeconds() * 1000);
     let keyResponse;
     try {
       keyResponse = await fetch(`${gateway}/.well-known/causal-verification-keys.json`, {
         headers: { Accept: "application/json" },
+        signal: keyController.signal,
       });
     } catch (err) {
       fail(`Could not retrieve the receipt verification keyset: ${err && err.message ? err.message : err}`, apiKey);
+    } finally {
+      clearTimeout(keyTimer);
     }
     if (!keyResponse.ok) fail(`Receipt keyset returned HTTP ${keyResponse.status}.`, apiKey);
     const keyset = await keyResponse.json();
     const verification = verifyReceipt(body, keyset, { source: sourceCode, tests: testCode });
     if (!verification.valid) fail(`Signed receipt verification failed: ${verification.classification} ${verification.reason}`, apiKey);
-    setOutput("receipt-id", body.receipt_id || "");
-    setOutput("receipt-url", body.receipt && body.receipt.predicate ? body.receipt.predicate.url || "" : "");
-    setOutput("receipt-authentication", body.receipt_authentication || "");
+
+    const expectedSignedResult = result.passed ? "PASSED" : "FAILED";
+    if (verification.result !== expectedSignedResult) {
+      fail(
+        `Signed receipt verdict mismatch: API reported ${expectedSignedResult}, receipt signed ${verification.result}.`,
+        apiKey
+      );
+    }
+
+    const receiptId = String(body.receipt_id || "");
+    if (!/^[a-f0-9]{64}$/.test(receiptId)) {
+      fail("Signed response must include a 64-character lowercase hexadecimal receipt_id.", apiKey);
+    }
+    const signedReceiptUrl = verification.statement.predicate.url || "";
+    setOutput("receipt-id", receiptId);
+    setOutput("receipt-url", signedReceiptUrl);
+    setOutput("receipt-authentication", "DSSE_ED25519");
     console.log(`Signed receipt: VALID (${verification.keyid})`);
   }
 

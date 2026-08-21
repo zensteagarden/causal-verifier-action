@@ -33,6 +33,13 @@ CAUSAL_ENGINE_API_KEY
 
 Set its value to the complete `cek_` key. Do not commit it or send it through chat.
 
+Create a repository variable named `NOTICER_CONTRACT_SHA256` and set it to the
+lowercase SHA-256 of the approved outcome contract:
+
+```bash
+sha256sum test_solution.py
+```
+
 ## 2. Add Source and an Outcome Contract
 
 Select one Python source file and one pytest file that asserts the required behavior.
@@ -72,18 +79,21 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
+      - uses: zensteagarden/causal-verifier-action@778604721c055ef5bf2384e56717895d26366a38
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
+          expected-test-sha256: ${{ vars.NOTICER_CONTRACT_SHA256 }}
 ```
 
-The immutable Action commit above is the v1.1.0 release.
+The immutable Action commit above contains the v1.2 decision-consistency and
+contract-pin security fixes.
 
 ## 4. Run It
 

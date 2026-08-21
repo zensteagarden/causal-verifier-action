@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
@@ -207,4 +208,25 @@ test("missing test-path is rejected before any request", async (t) => {
   assert.equal(result.code, 1);
   assert.equal(mock.requests.length, 0);
   assert.match(result.stderr, /Missing required input test-path/);
+});
+
+test("approved contract digest is enforced before any request", async (t) => {
+  const mock = await startServer();
+  t.after(() => mock.server.close());
+  const workspace = fixture();
+  const testCode = fs.readFileSync(path.join(workspace, "test_solution.py"), "utf8");
+  const approved = crypto.createHash("sha256").update(testCode).digest("hex");
+
+  const accepted = await invoke(workspace, mock.gateway, "cek_fixture_digest_ok", {
+    INPUT_EXPECTED_TEST_SHA256: approved,
+  });
+  assert.equal(accepted.code, 0);
+  assert.equal(mock.requests.length, 1);
+
+  const rejected = await invoke(workspace, mock.gateway, "cek_fixture_digest_bad", {
+    INPUT_EXPECTED_TEST_SHA256: "0".repeat(64),
+  });
+  assert.equal(rejected.code, 1);
+  assert.equal(mock.requests.length, 1);
+  assert.match(rejected.stderr, /does not match the approved expected-test-sha256/);
 });

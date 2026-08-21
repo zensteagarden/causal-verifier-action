@@ -10,6 +10,10 @@ Live gateway: `https://causal-engine-gateway.fly.dev`
 
 Version 1.1 requires an issuer-authenticated receipt, independently verifies its signature, and binds it to the exact local source and pytest contract before CI can pass.
 
+Version 1.2 also rejects disagreements between unsigned API fields and the
+signed verdict. A merge gate can pin its approved pytest contract with
+`expected-test-sha256` so an ordinary pull request cannot silently weaken it.
+
 
 ## Try One Outcome Proof Free
 
@@ -84,6 +88,13 @@ In the accepted pilot repository, add:
 CAUSAL_ENGINE_API_KEY=cek_your_privately_provisioned_key
 ```
 
+Add a repository variable named `NOTICER_CONTRACT_SHA256` containing the
+lowercase SHA-256 of the approved pytest contract. For example:
+
+```bash
+sha256sum test_solution.py
+```
+
 ### 2. Add the Workflow
 
 Create `.github/workflows/causal-verify.yml`:
@@ -102,18 +113,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
+      - uses: zensteagarden/causal-verifier-action@778604721c055ef5bf2384e56717895d26366a38
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
+          expected-test-sha256: ${{ vars.NOTICER_CONTRACT_SHA256 }}
 ```
 
-The immutable Action commit above is the v1.1.0 release. Replace the example paths with the selected Python source and pytest outcome contract. `test-path` is required so a passing result proves declared behavior rather than syntax alone.
+The immutable Action commit above contains the v1.2 decision-consistency and
+contract-pin security fixes. Replace the example paths with the selected Python
+source and approved pytest outcome contract.
 
 ## Inputs
 
@@ -123,6 +138,7 @@ The immutable Action commit above is the v1.1.0 release. Replace the example pat
 | `gateway-url` | no | `https://causal-engine-gateway.fly.dev` | Gateway base URL. |
 | `source-path` | no | first changed `.py` on PR | Python file to verify. |
 | `test-path` | yes | | Pytest file defining the verification contract. |
+| `expected-test-sha256` | no | | Approved 64-character lowercase SHA-256 of the pytest contract. Recommended for merge gates. |
 | `require-signed-receipt` | no | `true` | Reject missing, invalid, unknown-key, or revoked-key receipts. |
 | `timeout-seconds` | no | `120` | Client-side request timeout, 5-600 seconds. |
 
