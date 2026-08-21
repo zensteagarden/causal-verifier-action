@@ -1,0 +1,70 @@
+name: Free Noticer outcome proof
+description: Submit one public Python repository and one outcome that must be true.
+title: "[outcome proof]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        I am accepting the first five eligible public Python repositories.
+
+        You provide a repository URL and one outcome sentence. I run the proof myself. You do not need credits, an API key, private-repository access, or production credentials.
+
+        Everything submitted here is public. Do not paste source code, API keys, credentials, personal information, private repository details, or security reports.
+
+  - type: input
+    id: repository
+    attributes:
+      label: Public Python repository
+      description: Paste the full GitHub repository URL.
+      placeholder: https://github.com/owner/repository
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Required outcome
+      description: Complete one sentence with a narrow, observable result.
+      placeholder: "when an order is accepted, it must be retrievable by its order id."
+    validations:
+      required: true
+
+  - type: input
+    id: baseline
+    attributes:
+      label: Passing GitHub Actions run
+      description: Optional. Paste a run URL that represents the current green baseline.
+      placeholder: https://github.com/owner/repository/actions/runs/123456789
+
+  - type: dropdown
+    id: authority
+    attributes:
+      label: Your authority
+      description: You must be authorized to request a public proof for this repository.
+      options:
+        - Repository owner or administrator
+        - Maintainer with approval
+        - Contributor evaluating only
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Public proof confirmation
+      options:
+        - label: This is a public Python repository and I am authorized to request this proof.
+          required: true
+        - label: I authorize work only in a public fork or draft pull request. Nothing may be merged or deployed without repository-owner approval.
+          required: true
+        - label: The proof may be published through GitHub run links, verdicts, and signed receipt metadata.
+          required: true
+        - label: This request contains no credentials, private code, personal data, production access, or security vulnerability details.
+          required: true
+        - label: I understand this is a technical proof, not a promise that the repository contains a bug.
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        If the outcome can be reproduced safely from public code, I will reply with acceptance and the proof link. If it cannot, I will explain why.

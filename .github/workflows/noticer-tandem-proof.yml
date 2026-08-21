@@ -1,7 +1,13 @@
 name: Noticer Tandem Proof
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+
+concurrency:
+  group: noticer-tandem-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -12,14 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: "3.12"
       - name: Run the existing narrow CI contract
         shell: bash
         run: |
-          python -m pip install pytest
+          python -m pip install --disable-pip-version-check pytest==8.4.2
           PYTHONPATH=demo/tandem-proof pytest -q demo/tandem-proof/test_baseline.py
 
   noticer-outcome-gate:
@@ -27,21 +35,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Require the privately provisioned gateway credential and contract pin
+        shell: bash
+        env:
+          CAUSAL_ENGINE_API_KEY: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
+          NOTICER_CONTRACT_SHA256: ${{ vars.NOTICER_CONTRACT_SHA256 }}
+        run: |
+          if [ -z "$CAUSAL_ENGINE_API_KEY" ]; then
+            echo "::error::CAUSAL_ENGINE_API_KEY is unavailable. The gate fails closed instead of silently skipping verification."
+            exit 1
+          fi
+          if ! printf '%s' "$NOTICER_CONTRACT_SHA256" | grep -Eq '^[a-f0-9]{64}$'; then
+            echo "::error::NOTICER_CONTRACT_SHA256 must contain the approved contract digest."
+            exit 1
+          fi
 
       - name: Require the stronger outcome contract and signed receipt
         id: noticer
-        uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
+        uses: zensteagarden/causal-verifier-action@778604721c055ef5bf2384e56717895d26366a38
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: demo/tandem-proof/order_service.py
           test-path: demo/tandem-proof/test_outcome_contract.py
+          expected-test-sha256: ${{ vars.NOTICER_CONTRACT_SHA256 }}
           require-signed-receipt: "true"
 
       - name: Publish the non-secret decision
         if: always()
         shell: bash
+        env:
+          NOTICER_STATUS: ${{ steps.noticer.outputs.status }}
+          NOTICER_RECEIPT_AUTHENTICATION: ${{ steps.noticer.outputs.receipt-authentication }}
+          NOTICER_RECEIPT_ID: ${{ steps.noticer.outputs.receipt-id }}
         run: |
-          echo "status: ${{ steps.noticer.outputs.status }}"
-          echo "signed receipt: ${{ steps.noticer.outputs.receipt-authentication }}"
-          echo "receipt id: ${{ steps.noticer.outputs.receipt-id }}"
+          printf 'status: %s\n' "$NOTICER_STATUS"
+          printf 'signed receipt: %s\n' "$NOTICER_RECEIPT_AUTHENTICATION"
+          printf 'receipt id: %s\n' "$NOTICER_RECEIPT_ID"

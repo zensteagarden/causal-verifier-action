@@ -52,6 +52,33 @@ The failing Noticer result was a real GitHub check, but this repository's curren
 
 It does not prove universal bug detection or that Noticer can infer every required outcome automatically.
 
-## Safe future runs
+## Automatic operation
 
-Future runs are owner-controlled through `workflow_dispatch`, use a repository secret, and pin the Action to an immutable commit. Pull requests cannot mint demonstration keys or execute modified local Action code with a credential.
+This is an always-on **demo canary**. Every opened, updated, reopened, or
+ready-for-review pull request automatically runs the two jobs side by side:
+
+- `baseline-ci` runs the existing narrow repository check;
+- `noticer-outcome-gate` calls the live gateway and requires a valid signed
+  receipt bound to the fixed demo source and approved outcome contract.
+
+It verifies this one frozen demonstration on every pull request. It does not
+claim to verify every file or behavior changed by that pull request.
+
+The credential remains a repository secret. If it is unavailable, including on
+an untrusted fork or Dependabot pull request, the Noticer job fails closed
+instead of reporting an unverified success. The workflow deliberately avoids
+`pull_request_target`, so untrusted pull-request code is not executed with the
+repository credential.
+
+The approved outcome-contract digest is stored outside pull-request content in
+the repository variable `NOTICER_CONTRACT_SHA256`. The Action recomputes the
+checked-out contract digest and refuses to contact the gateway if it differs.
+The approved digest is:
+
+```text
+c0d5b6c275b81a448c26b2a19f59e92b36f86b305067bd4e9952fd9cece2d62c
+```
+
+`workflow_dispatch` remains available for an explicit rerun. The workflow pins
+the Action to an immutable security-reviewed commit and no longer mints
+disposable keys.

@@ -10,6 +10,26 @@ Live gateway: `https://causal-engine-gateway.fly.dev`
 
 Version 1.1 requires an issuer-authenticated receipt, independently verifies its signature, and binds it to the exact local source and pytest contract before CI can pass.
 
+Version 1.2 also rejects disagreements between unsigned API fields and the
+signed verdict. A merge gate can pin its approved pytest contract with
+`expected-test-sha256` so an ordinary pull request cannot silently weaken it.
+
+
+## Try One Outcome Proof Free
+
+I am accepting the first five eligible public Python repositories.
+
+Send only:
+
+- the public GitHub repository URL
+- one sentence: **"when ______ happens, ______ must be true."**
+
+I will run the repository's current checks and Noticer side by side, then return the public evidence. The free proof is operator-run: no email signup, credits, API key, private code, or production access is required from the tester.
+
+[Open a free outcome-proof request](https://github.com/zensteagarden/causal-verifier-action/issues/new?template=free-outcome-proof.yml)
+
+This is a controlled technical proof, not a promise that the repository contains a bug. Eligible requests must be reproducible safely from public code.
+
 ## Live Signed Verification Receipt
 
 [View the public issuer-authenticated Causal receipt](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32189632078).
@@ -54,32 +74,33 @@ The action:
 - does not print submitted source or tests by default
 - blocks configured source and test paths from escaping the GitHub workspace
 
-## 5-Minute Setup
+## Accepted Pilot Installation
 
-### 1. Create a Free API Key
+The free outcome proof above is run by the operator and does not require the tester to create an account or handle an API key.
 
-```bash
-curl -sS https://causal-engine-gateway.fly.dev/v1/accounts/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com"}'
-```
+Self-service email signup is paused during the controlled beta. If a proof is accepted for an installed pilot, the operator privately provisions a `cek_` API key. Never place a key in an issue, pull request, chat, screenshot, or workflow file.
 
-Copy the returned `api_key`. It should start with `cek_`.
+### 1. Add the GitHub Secret
 
-### 2. Add the GitHub Secret
-
-In your repository settings, add:
+In the accepted pilot repository, add:
 
 ```text
-CAUSAL_ENGINE_API_KEY=cek_your_key_here
+CAUSAL_ENGINE_API_KEY=cek_your_privately_provisioned_key
 ```
 
-### 3. Add a Workflow
+Add a repository variable named `NOTICER_CONTRACT_SHA256` containing the
+lowercase SHA-256 of the approved pytest contract. For example:
+
+```bash
+sha256sum test_solution.py
+```
+
+### 2. Add the Workflow
 
 Create `.github/workflows/causal-verify.yml`:
 
 ```yaml
-name: Causal Verification Gate
+name: Noticer Outcome Gate
 
 on:
   pull_request:
@@ -92,27 +113,32 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: zensteagarden/causal-verifier-action@v1
+      - uses: zensteagarden/causal-verifier-action@778604721c055ef5bf2384e56717895d26366a38
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
+          expected-test-sha256: ${{ vars.NOTICER_CONTRACT_SHA256 }}
 ```
 
-If `source-path` is omitted on a pull request, the action verifies the first added or modified `.py` file against `origin/<base_ref>`. `test-path` is always required so a passing result proves behavior, not merely valid syntax.
+The immutable Action commit above contains the v1.2 decision-consistency and
+contract-pin security fixes. Replace the example paths with the selected Python
+source and approved pytest outcome contract.
 
 ## Inputs
 
 | Name | Required | Default | Description |
 | --- | --- | --- | --- |
-| `api-key` | yes | | `cek_` key from `POST /v1/accounts/signup` or `/v1/accounts/register`. |
+| `api-key` | yes | | `cek_` key privately provisioned for an accepted pilot. |
 | `gateway-url` | no | `https://causal-engine-gateway.fly.dev` | Gateway base URL. |
 | `source-path` | no | first changed `.py` on PR | Python file to verify. |
 | `test-path` | yes | | Pytest file defining the verification contract. |
+| `expected-test-sha256` | no | | Approved 64-character lowercase SHA-256 of the pytest contract. Recommended for merge gates. |
 | `require-signed-receipt` | no | `true` | Reject missing, invalid, unknown-key, or revoked-key receipts. |
 | `timeout-seconds` | no | `120` | Client-side request timeout, 5-600 seconds. |
 
@@ -172,9 +198,14 @@ MVP response:
 When credits are exhausted, the engine returns HTTP 402. This action fails the job and writes `checkout-url` when the API provides one.
 
 
+## License and Ownership Boundary
+
+The MIT license applies to the software contained in this repository. It does not grant rights to the NOTICER name or to separately hosted service code, private verifier implementations, signing private keys, customer evidence, proprietary outcome-contract methods, or other material not included here. See [NOTICE.md](NOTICE.md).
+
 ## Documentation
 
-- [Five-minute quickstart](docs/QUICKSTART.md)
+- [Controlled beta and trial rules](docs/CONTROLLED_BETA.md)
+- [Accepted pilot quickstart](docs/QUICKSTART.md)
 - [API v1 compatibility contract](docs/API_V1.md)
 - [Security and safe support](SECURITY.md)
 - [MVP launch readiness](docs/LAUNCH_READINESS.md)
