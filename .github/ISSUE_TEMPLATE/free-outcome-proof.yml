@@ -9,7 +9,7 @@ body:
 
         You provide a repository URL and one outcome sentence. I run the proof myself. You do not need credits, an API key, private-repository access, or production credentials.
 
-        Everything submitted here is public. Do not paste source code, API keys, credentials, personal information, private repository details, or security reports.
+        Everything submitted here is public. Do not paste source code, proprietary customer details, API keys, credentials, personal information, private repository details, production-connected test details, or security reports.
 
   - type: input
     id: repository
@@ -44,7 +44,7 @@ body:
       options:
         - Repository owner or administrator
         - Maintainer with approval
-        - Contributor evaluating only
+        - Contributor with repository-owner approval
     validations:
       required: true
 
@@ -55,11 +55,11 @@ body:
       options:
         - label: This is a public Python repository and I am authorized to request this proof.
           required: true
-        - label: I authorize work only in a public fork or draft pull request. Nothing may be merged or deployed without repository-owner approval.
+        - label: I authorize work only in an operator-owned public fork; any draft pull request will stay between branches in that fork. Nothing may be merged or deployed without repository-owner approval.
           required: true
         - label: The proof may be published through GitHub run links, verdicts, and signed receipt metadata.
           required: true
-        - label: This request contains no credentials, private code, personal data, production access, or security vulnerability details.
+        - label: This request contains no credentials, private or proprietary code, personal or regulated data, production access, production-connected tests, or security vulnerability details.
           required: true
         - label: I understand this is a technical proof, not a promise that the repository contains a bug.
           required: true
