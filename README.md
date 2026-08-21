@@ -70,50 +70,79 @@ The action:
 - does not print submitted source or tests by default
 - blocks configured source and test paths from escaping the GitHub workspace
 
-## Accepted Pilot Installation
+## Accepted Controlled Pilot Installation
 
-The free outcome proof above is run by the operator and does not require the tester to create an account or handle an API key.
+Read the [complete First User Manual](docs/FIRST_USER_MANUAL.md) before
+installing. The current safe installed scope is an owner-approved manual run in
+a trusted repository using public or synthetic non-sensitive files. Do not submit
+proprietary customer code, credentials, personal or regulated data,
+production-connected tests, or arbitrary contributor code during this beta.
 
-Self-service email signup is paused during the controlled beta. If a proof is accepted for an installed pilot, the operator privately provisions a `cek_` API key. Never place a key in an issue, pull request, chat, screenshot, or workflow file.
+Self-service email signup is paused. The operator privately provisions one unique,
+limited `cek_` key for an accepted repository.
 
-### 1. Add the GitHub Secret
+### 1. Add the protected environment secret
 
-In the accepted pilot repository, add:
+Create a GitHub Actions environment named `noticer-beta`, add a required
+reviewer when supported, and add this environment secret:
 
 ```text
-CAUSAL_ENGINE_API_KEY=cek_your_privately_provisioned_key
+CAUSAL_ENGINE_API_KEY
 ```
 
-### 2. Add the Workflow
+The repository owner should paste the privately delivered value. Never commit,
+email, chat, screenshot, or print the real key.
 
-Create `.github/workflows/causal-verify.yml`:
+### 2. Add the manual workflow
+
+Create `.github/workflows/noticer-outcome-gate.yml`:
 
 ```yaml
 name: Noticer Outcome Gate
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
+
+concurrency:
+  group: noticer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   verify:
+    name: Noticer Outcome Gate
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    environment: noticer-beta
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
+      - name: Check required result
+        uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
+          require-signed-receipt: "true"
+          timeout-seconds: "120"
 ```
 
-The immutable Action commit above is the v1.1.0 release. Replace the example paths with the selected Python source and pytest outcome contract. `test-path` is required so a passing result proves declared behavior rather than syntax alone.
+The immutable Action commit above is the v1.1.0 release. Replace the two example
+paths with one explicit source file and one explicit pytest outcome contract.
+The Action submits the complete contents of those two files.
+
+### 3. Run it manually
+
+After the owner reviews and merges the manual-only workflow onto the default
+branch, open **Actions → Noticer Outcome Gate → Run workflow** and choose an
+owner-approved ref. Never use `pull_request_target`, `workflow_run`, or another
+privileged workaround to expose the key while checking out or executing untrusted
+code. Do not make the current beta workflow a required merge check.
 
 ## Inputs
 
@@ -141,7 +170,7 @@ The immutable Action commit above is the v1.1.0 release. Replace the example pat
 | `ast-valid` | AST validity signal when returned. |
 | `error-type` | Machine-readable error type when returned. |
 | `receipt-id` | Content-addressed receipt identifier. |
-| `receipt-url` | Permanent receipt lookup URL. |
+| `receipt-url` | Receipt lookup URL when returned by the gateway. |
 | `receipt-authentication` | Receipt authentication mode. |
 
 ## Response Compatibility
@@ -170,12 +199,14 @@ MVP response:
 
 ## Source and Secret Protection
 
-- Store API keys only in GitHub Secrets.
-- The action masks `cek_` keys in logs.
-- Submitted source code and tests are sent to the configured verification gateway but are not printed in CI logs by default.
-- Do not use this action for repositories containing secrets in source files.
-- Do not point `gateway-url` at a third-party URL unless you intentionally trust that service with submitted source and tests.
-- The action blocks configured file paths from escaping `GITHUB_WORKSPACE`.
+- Use a unique, limited key in a protected GitHub Actions environment secret.
+- The Action masks recognized `cek_` values, but masking is only a last defense against accidental log disclosure.
+- The complete selected source and pytest files are sent to the configured verification gateway but are not printed in CI logs by default.
+- During the beta, submit only public or synthetic non-sensitive files; the public documentation does not currently state a retention/deletion guarantee or SLA.
+- Never submit credentials, personal or regulated data, private customer code, production-connected tests, or arbitrary contributor code.
+- Do not point `gateway-url` at a third-party URL unless you intentionally trust that service with the submitted files.
+- The Action blocks configured file paths from escaping `GITHUB_WORKSPACE`.
+- Protect the workflow and outcome contract from unauthorized changes.
 
 ## HTTP 402
 
@@ -188,6 +219,7 @@ The MIT license applies to the software contained in this repository. It does no
 
 ## Documentation
 
+- [Complete First User Manual](docs/FIRST_USER_MANUAL.md)
 - [Controlled beta and trial rules](docs/CONTROLLED_BETA.md)
 - [Accepted pilot quickstart](docs/QUICKSTART.md)
 - [API v1 compatibility contract](docs/API_V1.md)

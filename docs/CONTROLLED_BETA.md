@@ -18,7 +18,7 @@ A request is eligible when:
 - the repository is public and primarily Python
 - the requester owns or maintains it, or has permission to request the proof
 - the outcome can be reproduced without secrets or production access
-- the outcome is observable and narrow enough to express as a pytest contract
+- the outcome is observable and narrow enough to express as one pytest contract against one selected Python source file
 - the requester permits the proof to appear in public GitHub evidence
 
 Examples:
@@ -31,7 +31,7 @@ Examples:
 
 1. Confirm eligibility in the public issue.
 2. Identify the smallest source path and outcome contract needed for the proof.
-3. Work only in a public fork or draft pull request. Do not merge or deploy.
+3. Work only in an operator-owned public fork. If a draft pull request is useful, open it between branches in that same fork so the operator's key is never requested from the customer repository. Do not merge or deploy.
 4. Run the repository's configured baseline checks.
 5. Run Noticer against the exact selected source and frozen outcome contract.
 6. Record the GitHub run links, exact commit, contract digest, verdict, and signed receipt identifier.
@@ -54,14 +54,15 @@ A completed proof does not mean:
 Do not request or accept:
 
 - API keys, passwords, tokens, or authorization headers
-- private source or private repository details
+- private source, proprietary customer code, or private repository details
 - personal or regulated data
+- arbitrary contributor code or production-connected tests
 - production database access
 - payment credentials
 - undisclosed security vulnerabilities
 
-Security reports must use the repository security policy rather than a public issue.
+Security reports must use the repository security policy rather than a public issue. The Action submits the complete selected source and test files, and the public documentation does not currently state a retention/deletion guarantee or SLA.
 
 ## After a Valuable Proof
 
-If the repository owner wants the gate maintained on future pull requests, scope an installed managed pilot separately. The operator privately provisions the key and proposes the workflow through a draft pull request. Nothing is merged or deployed without the repository owner's approval.
+If the repository owner wants to run the result again, scope a controlled manual pilot separately and follow the [First User Manual](FIRST_USER_MANUAL.md). The operator privately provisions a unique, limited key. The current beta workflow remains owner-dispatched and is not a required pull-request gate. Nothing is merged or deployed without the repository owner's approval.

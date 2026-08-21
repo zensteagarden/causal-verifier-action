@@ -6,14 +6,14 @@ branding:
   color: blue
 inputs:
   api-key:
-    description: "cek_ API key from POST /v1/accounts/signup or /v1/accounts/register. Store as a GitHub secret."
+    description: "Privately provisioned cek_ API key for an accepted controlled pilot. Store in a protected GitHub Actions environment secret."
     required: true
   gateway-url:
     description: "Causal verification gateway base URL."
     required: false
     default: "https://causal-engine-gateway.fly.dev"
   source-path:
-    description: "Python file to verify. If omitted on a pull_request, the first added/modified .py file vs github.base_ref is used."
+    description: "Python file to verify. An explicit path is strongly recommended; legacy pull_request auto-selection uses the first added/modified .py file vs github.base_ref."
     required: false
     default: ""
   test-path:
@@ -51,7 +51,7 @@ outputs:
   receipt-id:
     description: "Content-addressed verification receipt ID"
   receipt-url:
-    description: "Permanent receipt lookup URL"
+    description: "Receipt lookup URL when returned by the gateway"
   receipt-authentication:
     description: "Receipt authentication mode; DSSE_ED25519 when trusted"
 runs:

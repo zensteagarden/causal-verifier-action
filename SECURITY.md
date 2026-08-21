@@ -8,7 +8,7 @@ If private vulnerability reporting is not available, do not publish exploit deta
 
 ## Credential safety
 
-- Store `cek_` keys only in a password manager, protected local secret store, or GitHub Secrets.
+- Store a unique, limited `cek_` key only in a password manager, protected local secret store, or protected GitHub Actions environment secret.
 - Never place keys in workflow YAML, source files, issue comments, screenshots, terminal transcripts, or chat.
 - Never send a Windows, GitHub, email, or payment password to the gateway.
 - Rotate a key immediately if it may have been exposed.
@@ -16,7 +16,16 @@ If private vulnerability reporting is not available, do not publish exploit deta
 
 ## Source confidentiality
 
-Verification sends the selected source and pytest contract to the configured gateway. Do not submit secrets or credentials embedded in source. Do not configure a third-party gateway URL unless you intentionally trust it with the submitted code.
+Verification sends the complete contents of the selected source and pytest files to the configured gateway. During the controlled beta, submit only public or synthetic non-sensitive files. Do not submit credentials, personal or regulated data, private customer code, production-connected tests, or arbitrary contributor code. The public documentation does not currently state a retention/deletion guarantee or SLA. Do not configure a third-party gateway URL unless you intentionally trust it with the submitted files.
+
+## Untrusted workflow boundary
+
+Use an owner-approved manual workflow run for the controlled beta. Do not expose
+the key to arbitrary contributor branches, external forks, or Dependabot changes.
+GitHub intentionally withholds ordinary Actions secrets from fork and Dependabot
+pull requests. Never switch to `pull_request_target`, `workflow_run`, or another
+privileged workaround that checks out or executes untrusted code with the key
+available. Protect the workflow and outcome contract from unauthorized changes.
 
 ## Safe diagnostics
 
@@ -31,9 +40,9 @@ Support requests should contain only:
 
 Do not attach raw response bodies until they have been reviewed and redacted. Do not attach proprietary source unless a private support process explicitly requires it.
 
-## Supported release
+## Supported controlled-beta release
 
-Use `zensteagarden/causal-verifier-action@v1` for automatic compatible v1 security and reliability updates. Use `@v1.0.0` when organizational policy requires an immutable release.
+Pin Causal Verify Action v1.1.0 to the full immutable commit `zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148`. Do not use a mutable tag for a trusted beta run.
 
 ## Expected failure behavior
 
