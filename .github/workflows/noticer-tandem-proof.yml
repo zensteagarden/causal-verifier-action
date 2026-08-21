@@ -1,0 +1,84 @@
+name: Noticer Tandem Proof
+
+on:
+  pull_request:
+    paths:
+      - "demo/tandem-proof/**"
+      - ".github/workflows/noticer-tandem-proof.yml"
+      - "action.yml"
+      - "index.js"
+      - "verify-receipt.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-ci:
+    name: baseline-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run the existing narrow CI contract
+        shell: bash
+        run: |
+          python -m pip install pytest
+          PYTHONPATH=demo/tandem-proof pytest -q demo/tandem-proof/test_baseline.py
+
+  noticer-outcome-gate:
+    name: noticer-outcome-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create a disposable demonstration key
+        shell: python
+        run: |
+          import json
+          import os
+          import urllib.request
+
+          email = (
+              f"github-tandem-{os.environ['GITHUB_RUN_ID']}-"
+              f"{os.environ['GITHUB_RUN_ATTEMPT']}@example.com"
+          )
+          request = urllib.request.Request(
+              "https://causal-engine-gateway.fly.dev/v1/accounts/signup",
+              data=json.dumps({"email": email}).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              account = json.loads(response.read().decode("utf-8"))
+
+          key = account.get("api_key", "")
+          if not key.startswith("cek_"):
+              raise RuntimeError("The live gateway did not issue a protected key.")
+          if float(account.get("credits", -1)) != 20.0:
+              raise RuntimeError("The demonstration account did not receive 20 credits.")
+
+          print(f"::add-mask::{key}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"CAUSAL_ENGINE_API_KEY={key}\n")
+
+      - name: Require the stronger outcome contract and signed receipt
+        id: noticer
+        uses: ./
+        with:
+          api-key: ${{ env.CAUSAL_ENGINE_API_KEY }}
+          source-path: demo/tandem-proof/order_service.py
+          test-path: demo/tandem-proof/test_outcome_contract.py
+          require-signed-receipt: "true"
+
+      - name: Publish the non-secret decision
+        if: always()
+        shell: bash
+        run: |
+          echo "status: ${{ steps.noticer.outputs.status }}"
+          echo "signed receipt: ${{ steps.noticer.outputs.receipt-authentication }}"
+          echo "receipt id: ${{ steps.noticer.outputs.receipt-id }}"
