@@ -1,5 +1,7 @@
 # GitHub CI + Noticer tandem proof
 
+**Noticer** is the managed outcome-assurance service. **Causal Verify** is the GitHub Action and verifier component used by this demonstration.
+
 This is a deliberately small synthetic demonstration of one narrow claim:
 
 > A successful order response means the corresponding order record exists in the workflow's observable order-store state.
@@ -14,8 +16,13 @@ Two independent GitHub jobs evaluated the same commit:
 | State | Commit | Live run | baseline-ci | noticer-outcome-gate |
 | --- | --- | --- | --- | --- |
 | Control | [`b74e4e5`](https://github.com/zensteagarden/causal-verifier-action/commit/b74e4e5670433f3c2ee425d85fe4c841b93c9281) | [run 32502863829](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32502863829) | PASS | PASS |
-| False success | [`e82764d`](https://github.com/zensteagarden/causal-verifier-action/commit/e82764d085ae926178436e18dc881c2d3d452be0) | [run 32502969888](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32502969888) | PASS | FAIL |
+| False success | [`e82764d`](https://github.com/zensteagarden/causal-verifier-action/commit/e82764d085ae926178436e18dc881c2d3d452be0) | [run 32502969888](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32502969888) | [PASS](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32502969888/job/96836687769) | [FAIL](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32502969888/job/96836687992) |
 | Repair | [`fa308cb`](https://github.com/zensteagarden/causal-verifier-action/commit/fa308cbbb91096b6fa89da33f966681b6fdccbb8) | [run 32503036330](https://github.com/zensteagarden/causal-verifier-action/actions/runs/32503036330) | PASS | PASS |
+
+Implementation-only comparisons:
+
+- [Control to false success](https://github.com/zensteagarden/causal-verifier-action/compare/b74e4e5670433f3c2ee425d85fe4c841b93c9281...e82764d085ae926178436e18dc881c2d3d452be0)
+- [False success to repair](https://github.com/zensteagarden/causal-verifier-action/compare/e82764d085ae926178436e18dc881c2d3d452be0...fa308cbbb91096b6fa89da33f966681b6fdccbb8)
 
 The baseline test and Noticer outcome contract did not change between those three recorded states. Only the implementation changed.
 
@@ -33,9 +40,11 @@ receipt_id: 4f836435c0b93ed2a1b316563b5a3a4114bcc64075d3ec9f776bf2c4f175183f
 
 ## Honest boundary
 
-The stronger pytest contract could also be executed directly inside GitHub Actions. This demonstration does not introduce a new test language or automatic intent inference. The additional mechanism shown here is a separately operated gate that returns a signed decision bound to the exact source and outcome-contract bytes, and can be required beside the team's existing CI check.
+The stronger contract is pytest and could also be run directly inside GitHub Actions. This demonstration shows the incremental value of a separately operated gate and issuer-authenticated receipt bound to the exact source and contract. It does not show a uniquely expressive test language or automatic inference of intent.
 
 This synthetic example uses an in-memory order store. It demonstrates observable state discrimination within the test execution; it does not claim database durability.
+
+The failing Noticer result was a real GitHub check, but this repository's current default branch is not protected by a rule requiring it. The evidence supports “returned a failing check that can be made required,” not “blocked this merge.”
 
 ## What this proves
 
