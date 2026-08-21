@@ -170,7 +170,7 @@ code. Do not make the current beta workflow a required merge check.
 | `ast-valid` | AST validity signal when returned. |
 | `error-type` | Machine-readable error type when returned. |
 | `receipt-id` | Content-addressed receipt identifier. |
-| `receipt-url` | Permanent receipt lookup URL. |
+| `receipt-url` | Receipt lookup URL when returned by the gateway. |
 | `receipt-authentication` | Receipt authentication mode. |
 
 ## Response Compatibility
