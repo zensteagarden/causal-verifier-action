@@ -4,14 +4,14 @@
 
 - Require independently verified DSSE/Ed25519 receipts by default.
 - Bind passing CI results to the exact submitted source and pytest contract.
-- Add permanent content-addressed receipt identifiers and retrieval URLs.
+- Add content-addressed receipt identifiers and lookup URLs.
 - Publish signing-key lifecycle states for rotation, retirement, and revocation.
 - Add a public offline verifier with `VALID`, `INVALID`, and `UNTRUSTED` outcomes.
 - Reject tampered payloads, unknown or revoked keys, and source/test digest mismatches.
 - Add a tamper-evident receipt transparency chain.
 - Expose receipt ID, URL, and authentication mode as Action outputs.
-- Publish a successful live signed-gate proof using synthetic code and a disposable masked key.
-- Preserve source, test, credential, and signing-key privacy.
+- Publish a successful live signed-gate proof using synthetic code and a protected masked controlled-beta key.
+- Keep submitted source, tests, credentials, and private signing material out of public receipt evidence and default Action logs; the gateway still receives the complete selected source and test files.
 
 ## v1.0.0
 
