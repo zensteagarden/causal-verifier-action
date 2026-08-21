@@ -3,16 +3,23 @@ name: Publish Causal Receipt Proof
 on:
   workflow_dispatch:
 
+concurrency:
+  group: public-receipt-proof
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   publish-receipt:
     runs-on: ubuntu-latest
+    environment: noticer-beta
     timeout-minutes: 5
     steps:
       - name: Call the live gate and publish its signed receipt
         shell: python
+        env:
+          CAUSAL_ENGINE_API_KEY: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
         run: |
           import base64
           import json
@@ -20,18 +27,9 @@ jobs:
           import urllib.request
 
           base_url = "https://causal-engine-gateway.fly.dev"
-          signup = urllib.request.Request(
-              f"{base_url}/v1/accounts/signup",
-              data=json.dumps({"channel": "mcp"}).encode("utf-8"),
-              headers={"Content-Type": "application/json"},
-              method="POST",
-          )
-          with urllib.request.urlopen(signup, timeout=30) as response:
-              account = json.loads(response.read().decode("utf-8"))
-
-          api_key = account.get("api_key", "")
+          api_key = os.environ.get("CAUSAL_ENGINE_API_KEY", "")
           if not api_key.startswith("cek_"):
-              raise RuntimeError("The live gateway did not issue a protected API key.")
+              raise RuntimeError("Missing privately provisioned controlled-beta key.")
           print(f"::add-mask::{api_key}")
 
           source_code = "def add(a: int, b: int) -> int:\n    return a + b\n"
