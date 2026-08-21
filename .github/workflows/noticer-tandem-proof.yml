@@ -1,6 +1,15 @@
 name: Noticer Tandem Proof
 
 on:
+  push:
+    branches:
+      - "demo/tandem-outcome-proof"
+    paths:
+      - "demo/tandem-proof/**"
+      - ".github/workflows/noticer-tandem-proof.yml"
+      - "action.yml"
+      - "index.js"
+      - "verify-receipt.js"
   pull_request:
     paths:
       - "demo/tandem-proof/**"
