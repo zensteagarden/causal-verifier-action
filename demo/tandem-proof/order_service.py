@@ -13,7 +13,7 @@ def create_order(order_id: str, amount: int):
         "amount": amount,
         "status": "created",
     }
-    # False success: the function reports success but never stores the record.
+    _orders[order_id] = record
     return {"status": "success", "order_id": order_id}
 
 
