@@ -13,7 +13,7 @@ Authenticated endpoints require:
 Authorization: Bearer cek_...
 ```
 
-Treat API keys as secrets. Never commit them, print them in logs, place them in source files, or send them through chat. The GitHub Action accepts the key through the `api-key` input and should receive it from GitHub Secrets.
+Treat API keys as secrets. Never commit them, print them in logs, place them in source files, or send them through email or chat. The GitHub Action accepts the key through the `api-key` input and should receive it from a protected GitHub Actions environment secret. Use one unique, limited key per accepted repository and rotate it after suspected exposure.
 
 ## Content Type
 
@@ -23,22 +23,13 @@ Requests with JSON bodies use:
 Content-Type: application/json
 ```
 
-## Create an account
+## Key provisioning during the controlled beta
 
-```http
-POST /v1/accounts/signup
-POST /v1/accounts/register
-```
-
-Request:
-
-```json
-{
-  "email": "developer@example.com"
-}
-```
-
-A successful response includes a newly issued API key beginning with `cek_`. Capture it once and store it securely. Clients must not depend on the key being recoverable later.
+Self-service signup and registration are paused. The public free proof requires no
+account or API key from the tester. For an accepted controlled pilot, the operator
+privately provisions a unique, limited key after confirming the non-sensitive
+source and execution scope. Do not build clients against undocumented signup or
+key-recovery behavior.
 
 ## Verify Python code
 
@@ -123,8 +114,8 @@ Within v1:
 
 ## Security boundaries
 
-The service receives submitted source and tests. Do not submit files containing secrets. Use only the official gateway unless you intentionally trust another configured endpoint with the submitted code. The Action blocks configured source and test paths from escaping `GITHUB_WORKSPACE` and rejects gateway URLs containing embedded credentials.
+The service receives the complete contents of the selected source and pytest files. During the controlled beta, submit only public or synthetic non-sensitive files. Do not submit credentials, personal or regulated data, private customer code, production-connected tests, or arbitrary contributor code. The public documentation does not currently state a retention/deletion guarantee or SLA. Use only the official gateway unless you intentionally trust another configured endpoint with the submitted files. The Action blocks configured source and test paths from escaping `GITHUB_WORKSPACE` and rejects gateway URLs containing embedded credentials.
 
 ## Versioning
 
-The API base path is `/v1`. The Action's supported major reference is `zensteagarden/causal-verifier-action@v1`; immutable release `v1.0.0` is available for exact pinning.
+The API base path is `/v1`. Controlled pilots must pin Causal Verify Action v1.1.0 to the full immutable commit `zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148`. Do not use a mutable tag for a trusted beta run.
