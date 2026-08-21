@@ -1,41 +1,48 @@
 # Controlled Beta Quickstart
 
-This guide installs the Causal Verify Action after an operator-run Noticer outcome proof has been accepted for a managed pilot.
+For the easiest first experience, use the operator-run proof. It needs only:
 
-The free proof itself requires only:
-
-1. a public GitHub repository URL
-2. one sentence: **"when ______ happens, ______ must be true."**
+1. a public Python repository URL
+2. one sentence: **“when ______ happens, ______ must be true.”**
 
 [Open a free outcome-proof request](https://github.com/zensteagarden/causal-verifier-action/issues/new?template=free-outcome-proof.yml).
 
-Do not post API keys, source code, credentials, personal information, or security reports in the public issue.
+There is no download, account, email signup, credit claim, API key, private code,
+or production access required from the tester. Do not post credentials, personal
+information, private repository details, or security reports in the public issue.
 
-## Before You Install
+For the complete explanation, safety boundary, installation steps, result guide,
+and troubleshooting, read the [First User Manual](FIRST_USER_MANUAL.md).
 
-An accepted installed pilot requires:
+## Current safe scope
 
-- a GitHub repository
-- permission to add repository secrets and workflow files
-- one selected Python source file
-- one pytest outcome contract
-- a `cek_` API key privately provisioned by the operator
+Use the installed beta only after operator acceptance:
 
-Self-service email signup is paused during the controlled beta. The key is delivered privately only after the proof and installation scope are accepted.
+- public or synthetic non-sensitive Python
+- one explicit source file plus one explicit pytest contract
+- a trusted repository and owner-approved ref
+- a unique, limited key privately provisioned for that repository
+- an owner-approved manual workflow run
 
-## 1. Add the Secret
+Do not submit proprietary customer code, credentials, personal or regulated data,
+production-connected tests, or arbitrary contributor code. Do not make the beta
+workflow a required merge check yet.
 
-Create a repository secret named:
+## 1. Add the protected beta environment
 
-```text
-CAUSAL_ENGINE_API_KEY
-```
+1. Open repository **Settings** → **Environments**.
+2. Create an environment named `noticer-beta`.
+3. Add a required reviewer and branch restriction when the GitHub plan supports
+   those controls.
+4. Add the environment secret `CAUSAL_ENGINE_API_KEY`.
+5. Paste the privately provisioned value and save it.
 
-Set its value to the complete `cek_` key. Do not commit it or send it through chat.
+The repository owner should add the key. Never commit, email, chat, screenshot,
+or print it. Do not reuse it across customers or repositories.
 
-## 2. Add Source and an Outcome Contract
+## 2. Select the source and outcome contract
 
-Select one Python source file and one pytest file that asserts the required behavior.
+Use explicit repository-relative paths.
 
 Example `solution.py`:
 
@@ -50,11 +57,15 @@ Example `test_solution.py`:
 from solution import add
 
 
-def test_add():
+def test_add_returns_the_required_sum():
     assert add(2, 3) == 5
 ```
 
-## 3. Add the Workflow
+The Action submits the complete contents of those two files. It does not submit
+supporting modules or dependency manifests. The public documentation does not
+currently state a retention/deletion guarantee or SLA.
+
+## 3. Add the manual workflow
 
 Create `.github/workflows/noticer-outcome-gate.yml`:
 
@@ -62,53 +73,76 @@ Create `.github/workflows/noticer-outcome-gate.yml`:
 name: Noticer Outcome Gate
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   workflow_dispatch:
+
+concurrency:
+  group: noticer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   verify:
+    name: Noticer Outcome Gate
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    environment: noticer-beta
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
+      - name: Check required result
+        uses: zensteagarden/causal-verifier-action@1a7c4f6e21f4218e78b6311b4df6811ae8790148
         with:
           api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
           source-path: solution.py
           test-path: test_solution.py
+          require-signed-receipt: "true"
+          timeout-seconds: "120"
 ```
 
-The immutable Action commit above is the v1.1.0 release.
+Both actions use immutable commit pins. Replace the two example paths.
 
-## 4. Run It
+## 4. Run it
 
-Open a pull request or manually dispatch the workflow. A passing job requires a valid signed receipt bound to the selected source and outcome contract. A failing contract, malformed response, HTTP error, timeout, exhausted balance, unsafe path, or unsafe gateway URL fails the job.
+`workflow_dispatch` is available after the workflow exists on the default
+branch. Have the owner review and merge this manual-only workflow; merging it
+does not run Noticer automatically.
 
-A repository owner may make the Noticer Outcome Gate a required status check after validating the pilot.
+1. Open **Actions** → **Noticer Outcome Gate**.
+2. Select **Run workflow**.
+3. Choose an owner-approved branch containing only the intended non-sensitive
+   source and contract.
+4. Approve the `noticer-beta` environment when prompted.
+5. Open the job and read its final status.
 
-## Troubleshooting
+Never use `pull_request_target`, `workflow_run`, or another privileged
+workaround to expose the key while checking out or executing untrusted code.
 
-### Missing API Key
+## 5. Understand the verdict
 
-Confirm the secret is named exactly `CAUSAL_ENGINE_API_KEY` and the workflow passes it through `secrets.CAUSAL_ENGINE_API_KEY`. Never print the secret.
+A valid receipt proves that the exact submitted source file passed the exact
+submitted pytest contract on the Noticer gateway at that time, and that the
+receipt matches the issuer's published signing key and both file digests.
 
-### Missing Outcome Contract
+- `PASS`, `pass`, or `SETTLED`: the selected contract passed and the signed
+  receipt verified.
+- `FAIL`, `fail`, or `FAILED`: the selected contract did not pass.
+- HTTP 402 or `PAYMENT_REQUIRED`: balance problem, not a code verdict.
+- `HTTP_ERROR`, timeout, 401, 403, or 5xx: operational problem, not necessarily
+  a code defect.
+- Signed receipt failure: authentication or binding failed; keep the gate closed.
 
-The `test-path` input is required. Point it to a real pytest file that asserts the declared behavior.
+A PASS does not prove that the contract captures intent, the whole repository or
+production system worked, no other bug exists, or an independent auditor approved
+the system.
 
-### HTTP 402
+## Safe support
 
-The account has no remaining verification balance. Contact the operator through the accepted pilot thread. Do not use an unverified checkout link.
-
-### Path Rejected
-
-Both source and test files must resolve inside `GITHUB_WORKSPACE`. Symlinks and traversal paths that escape the workspace are rejected.
-
-### Safe Support Information
-
-Share only the Action version, HTTP status, normalized status, error type, and request ID. Do not share API keys, raw authorization headers, proprietary source, or complete unredacted responses.
+Share only the Action pin, GitHub run URL, HTTP status, normalized status, error
+type, request ID, receipt ID when returned, and whether the official gateway was
+used. Do not share the key, authorization headers, private source, customer data,
+or raw unredacted responses.
