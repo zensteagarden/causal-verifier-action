@@ -19,6 +19,10 @@ inputs:
   test-path:
     description: "Pytest file defining the verification contract."
     required: true
+  expected-test-sha256:
+    description: "Optional approved SHA-256 of the pytest contract. The Action fails before contacting the gateway when the checked-out contract differs."
+    required: false
+    default: ""
   require-signed-receipt:
     description: "Require a valid DSSE/Ed25519 receipt bound to the submitted source and tests."
     required: false

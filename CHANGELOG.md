@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.0 — Trusted decision enforcement
+
+- Require the signed receipt verdict to agree with the API's outer verdict.
+- Reject malformed receipt identifiers and unsupported signed decision statuses.
+- Add an optional approved pytest-contract SHA-256 pin.
+- Bound signing-key retrieval with the configured client timeout.
+- Add regression tests for contradictory verdicts and contract substitution.
+
 ## v1.1.0 — Trusted verification records
 
 - Require independently verified DSSE/Ed25519 receipts by default.
