@@ -1,0 +1,35 @@
+name: Noticer pytest 14931 proof
+
+on:
+  pull_request:
+    paths:
+      - "proof/discovery/pytest-14931/**"
+      - ".github/workflows/noticer-pytest-14931.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  signed-noticer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run full Noticer against exact public candidate
+        id: noticer
+        uses: ./
+        with:
+          api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
+          source-path: proof/discovery/pytest-14931/deprecated.py
+          test-path: proof/discovery/pytest-14931/deprecated_test.py
+          contract-preflight: true
+          require-signed-receipt: true
+          timeout-seconds: 120
+      - name: Record non-sensitive verification metadata
+        if: always()
+        run: |
+          echo "status=${{ steps.noticer.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "passed=${{ steps.noticer.outputs.passed }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "receipt-id=${{ steps.noticer.outputs.receipt-id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "receipt-url=${{ steps.noticer.outputs.receipt-url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "receipt-authentication=${{ steps.noticer.outputs.receipt-authentication }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "preflight-status=${{ steps.noticer.outputs.preflight-status }}" >> "$GITHUB_STEP_SUMMARY"
