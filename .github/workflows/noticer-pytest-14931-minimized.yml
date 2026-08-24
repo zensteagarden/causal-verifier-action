@@ -1,0 +1,49 @@
+name: Noticer pytest 14931 minimized controls
+
+on:
+  pull_request:
+    paths:
+      - "proof/discovery/pytest-14931/minimized/**"
+      - ".github/workflows/noticer-pytest-14931-minimized.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  discriminate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wrong source with binding contract
+        id: bad
+        continue-on-error: true
+        uses: ./
+        with:
+          api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
+          source-path: proof/discovery/pytest-14931/minimized/bad/warning_case.py
+          test-path: proof/discovery/pytest-14931/minimized/bad/test_warning_case.py
+          require-signed-receipt: true
+      - name: Correct source with same binding contract
+        id: good
+        continue-on-error: true
+        uses: ./
+        with:
+          api-key: ${{ secrets.CAUSAL_ENGINE_API_KEY }}
+          source-path: proof/discovery/pytest-14931/minimized/good/warning_case.py
+          test-path: proof/discovery/pytest-14931/minimized/good/test_warning_case.py
+          require-signed-receipt: true
+      - name: Require discrimination
+        run: |
+          test "${{ steps.bad.outcome }}" = "failure"
+          test "${{ steps.bad.outputs.passed }}" = "false"
+          test "${{ steps.bad.outputs.receipt-authentication }}" = "DSSE_ED25519"
+          test "${{ steps.good.outcome }}" = "success"
+          test "${{ steps.good.outputs.passed }}" = "true"
+          test "${{ steps.good.outputs.receipt-authentication }}" = "DSSE_ED25519"
+      - name: Record evidence
+        if: always()
+        run: |
+          echo "bad-status=${{ steps.bad.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "bad-receipt=${{ steps.bad.outputs.receipt-url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "good-status=${{ steps.good.outputs.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "good-receipt=${{ steps.good.outputs.receipt-url }}" >> "$GITHUB_STEP_SUMMARY"
