@@ -33,3 +33,6 @@ jobs:
           echo "receipt-url=${{ steps.noticer.outputs.receipt-url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "receipt-authentication=${{ steps.noticer.outputs.receipt-authentication }}" >> "$GITHUB_STEP_SUMMARY"
           echo "preflight-status=${{ steps.noticer.outputs.preflight-status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "ast-valid=${{ steps.noticer.outputs.ast-valid }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "error-type=${{ steps.noticer.outputs.error-type }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "request-id=${{ steps.noticer.outputs.request-id }}" >> "$GITHUB_STEP_SUMMARY"
